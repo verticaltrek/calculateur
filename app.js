@@ -34,8 +34,8 @@ const state = {
     },
     colors: {
         roof: "#cbd5e1",
-        anchors: "#808080",
-        cable: "#64748b"
+        anchors: "#f8fafc",
+        cable: "#f8fafc"
     }
 };
 
@@ -45,10 +45,7 @@ const COMPONENTS_DB = {
         { id: "New_Pro", name: "NEW PRO ABSORBER", file: "models/new_pro/New_Pro.obj", checked: false, exploded: ["models/new_pro/New_Pro_exploded1.png", "models/new_pro/New_Pro_exploded2.png", "models/new_pro/New_Pro_exploded3.png"] },
         { id: "X-Matrix", name: "X-MATRIX JONCTION MULTIDIRECTIONNELLE", file: "models/new_pro/X-Matrix.obj", checked: false, exploded: ["models/new_pro/X-Matrix_exploded1.png", "models/new_pro/X-Matrix_exploded2.png", "models/new_pro/X-Matrix_exploded3.png"] },
         { id: "Mini_Omega", name: "MINI OMEGA", file: "models/new_pro/Mini_Omega.obj", checked: false, exploded: ["models/new_pro/Mini_Omega_exploded1.png", "models/new_pro/Mini_Omega_exploded2.png", "models/new_pro/Mini_Omega_exploded3.png"] },
-        { id: "A-Fix", name: "A-FIX ANCHOR", file: "models/new_pro/A-Fix.obj", checked: false, exploded: ["models/new_pro/A-Fix_exploded1.png", "models/new_pro/A-Fix_exploded2.png"] },
-        { id: "Contre_Plaque", name: "CONTRE PLAQUE UNIVERSELLE", file: "models/new_pro/Contre_Plaque_Universelle.obj", checked: false, exploded: ["models/new_pro/Contre_Plaque_Universelle_exploded1.png", "models/new_pro/Contre_Plaque_Universelle_exploded2.png"] },
         { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/new_pro/P_Inox_Rigide.obj", checked: false, exploded: ["models/new_pro/P_Inox_Rigide_exploded1.png", "models/new_pro/P_Inox_Rigide_exploded2.png", "models/new_pro/P_Inox_Rigide_exploded3.png"] },
-        { id: "Pack_Matrix", name: "PACK MATRIX", file: "models/new_pro/Pack_Matrix.obj", checked: false, exploded: ["models/new_pro/Pack_Matrix_exploded1.png", "models/new_pro/Pack_Matrix_exploded2.png", "models/new_pro/Pack_Matrix_exploded3.png"] },
         { id: "X-Cone", name: "X-CONE", file: "models/new_pro/X-Cone.obj", checked: false, exploded: ["models/new_pro/X-Cone_exploded1.png", "models/new_pro/X-Cone_exploded3.png"] }
     ],
     "LIGHT PRO": [
@@ -86,20 +83,8 @@ function loadOBJModel(filePath) {
 
 function preloadActiveModels() {
     const list = COMPONENTS_DB[state.product] || [];
-    const allFiles = [
-        ...list.map(c => c.file),
-        "models/new_pro/New_Pro.obj",
-        "models/new_pro/Mini_Omega.obj",
-        "models/new_pro/X-Matrix.obj",
-        "models/new_pro/A-Fix.obj",
-        "models/new_pro/Contre_Plaque_Universelle.obj",
-        "models/light_pro/LightPro.obj",
-        "models/light_pro/PB_HOOKt.obj",
-        "models/long_range/LongRange.obj",
-        "models/long_range/A-Fix.obj"
-    ];
-    
-    const uniqueFiles = [...new Set(allFiles.filter(Boolean))];
+    const files = list.map(c => c.file).filter(Boolean);
+    const uniqueFiles = [...new Set(files)];
     const promises = uniqueFiles.map(f => loadOBJModel(f));
 
     Promise.all(promises).then(() => {
@@ -1102,22 +1087,22 @@ function prepareOBJModel(rawObj, rotY, modelFile = null) {
     const clone = rawObj.clone();
 
     // Rotate CAD model: X and Z axis orientation adjustments for specific models
-    if (modelFile && (modelFile.includes("A-Fix") || modelFile.includes("afix") || modelFile.includes("A_Fix"))) {
-        clone.rotation.x = -Math.PI / 2 + Math.PI / 4; // Rotate A-Fix 45° around X-axis
-        clone.rotation.z = Math.PI / 2; // Rotate A-Fix 90° around Z-axis
-    } else if (modelFile && (modelFile.includes("LongRange") || modelFile.includes("long_range") || modelFile.includes("Long_Range"))) {
-        clone.rotation.x = Math.PI / 2; // Rotate 90° around X-axis
-        clone.rotation.z = 0; // Cancel Z-axis rotation
+    if (modelFile && (modelFile.includes("LongRange") || modelFile.includes("long_range") || modelFile.includes("Long_Range"))) {
+        clone.rotation.x = Math.PI / 2; // Rotate 90° around X-axis strictly for Long Range models
+        clone.rotation.z = 0;
     } else {
-        clone.rotation.x = -Math.PI / 2; // Default vertical orientation for post models
+        clone.rotation.x = -Math.PI / 2; // Default vertical orientation for all other system models (NEW PRO, LIGHT PRO, etc.)
+        clone.rotation.z = 0;
     }
 
-    // Clean neutral galvanized steel metal material for all parts
-    const matColor = state.colors.anchors || "#808080";
+    // High-visibility polished stainless steel / chrome material for all components
+    const matColor = state.colors.anchors || "#f8fafc";
     const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(matColor),
-        metalness: 0.8,
-        roughness: 0.25,
+        metalness: 0.92,
+        roughness: 0.12,
+        emissive: new THREE.Color(matColor),
+        emissiveIntensity: 0.15,
         side: THREE.DoubleSide
     });
     
@@ -1155,7 +1140,9 @@ function prepareOBJModel(rawObj, rotY, modelFile = null) {
 
     // Additional Y-axis rotation offsets for specific models
     if (modelFile) {
-        if (modelFile.includes("A-Fix") || modelFile.includes("afix") || modelFile.includes("A_Fix") || modelFile.includes("Mini_Omega") || modelFile.includes("X-Cone") || (modelFile.includes("light_pro") && (modelFile.includes("P_Inox") || modelFile.includes("P_Galva"))) || modelFile.includes("LongRange") || modelFile.includes("long_range")) {
+        if (modelFile.includes("Mini_Omega") || modelFile.includes("X-Cone") || (modelFile.includes("light_pro") && (modelFile.includes("P_Inox") || modelFile.includes("P_Galva")))) {
+            angleOffset += Math.PI / 2;
+        } else if (modelFile.includes("LongRange") || modelFile.includes("long_range") || modelFile.includes("Long_Range")) {
             angleOffset += Math.PI / 2;
         }
     }
@@ -1379,6 +1366,129 @@ function create3DRoofShape(L, l, roofMat) {
     return roofGroup;
 }
 
+// 3D Procedural Cable End Loop Terminal with Crimped Sleeves (Manchons de sertissage)
+function createCableLoopTerminal(pos, dir, cableColorHex) {
+    const group = new THREE.Group();
+    const compColor = cableColorHex || state.colors.cable || "#f8fafc";
+    const matCable = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(compColor),
+        metalness: 0.92,
+        roughness: 0.12,
+        emissive: new THREE.Color(compColor),
+        emissiveIntensity: 0.15
+    });
+    const matSleeve = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(compColor),
+        metalness: 0.95,
+        roughness: 0.10,
+        emissive: new THREE.Color(compColor),
+        emissiveIntensity: 0.15
+    });
+
+    const sleeveLength = 0.08;
+    const sleeveRadius = 0.015;
+    
+    // Main Crimp Sleeve Cylinder
+    const sleeveGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, sleeveLength, 16);
+    const sleeveMesh = new THREE.Mesh(sleeveGeo, matSleeve);
+    sleeveMesh.position.set(0, 0, sleeveLength / 2);
+    sleeveMesh.rotation.x = Math.PI / 2;
+    group.add(sleeveMesh);
+
+    // 3 Stamped Crimp Rings on sleeve
+    const numRings = 3;
+    for (let r = 1; r <= numRings; r++) {
+        const ringGeo = new THREE.TorusGeometry(sleeveRadius + 0.002, 0.0025, 10, 20);
+        const ringMesh = new THREE.Mesh(ringGeo, matSleeve);
+        const ringZ = (r * sleeveLength) / (numRings + 1);
+        ringMesh.position.set(0, 0, ringZ);
+        group.add(ringMesh);
+    }
+
+    // Two parallel cable strands inside/entering the sleeve
+    const cableR = 0.0075;
+    const offset = 0.0065;
+    const cGeo = new THREE.CylinderGeometry(cableR, cableR, sleeveLength, 10);
+    const c1 = new THREE.Mesh(cGeo, matCable);
+    c1.position.set(-offset, 0, sleeveLength / 2);
+    c1.rotation.x = Math.PI / 2;
+    group.add(c1);
+
+    const c2 = new THREE.Mesh(cGeo, matCable);
+    c2.position.set(offset, 0, sleeveLength / 2);
+    c2.rotation.x = Math.PI / 2;
+    group.add(c2);
+
+    // Teardrop Cable Loop
+    const loopLength = 0.12;
+    const loopWidth = 0.032;
+    const pts = [
+        new THREE.Vector3(-offset, 0, sleeveLength),
+        new THREE.Vector3(-loopWidth, 0, sleeveLength + loopLength * 0.35),
+        new THREE.Vector3(-loopWidth * 0.7, 0, sleeveLength + loopLength * 0.85),
+        new THREE.Vector3(0, 0, sleeveLength + loopLength),
+        new THREE.Vector3(loopWidth * 0.7, 0, sleeveLength + loopLength * 0.85),
+        new THREE.Vector3(loopWidth, 0, sleeveLength + loopLength * 0.35),
+        new THREE.Vector3(offset, 0, sleeveLength)
+    ];
+
+    const loopCurve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+    const loopGeo = new THREE.TubeGeometry(loopCurve, 32, cableR, 10, false);
+    const loopMesh = new THREE.Mesh(loopGeo, matCable);
+    group.add(loopMesh);
+
+    // Orient and position terminal group along dir
+    group.position.copy(pos);
+
+    const unitDir = dir.clone().normalize();
+    const defaultDir = new THREE.Vector3(0, 0, 1);
+    const quat = new THREE.Quaternion().setFromUnitVectors(defaultDir, unitDir);
+    group.quaternion.copy(quat);
+
+    return group;
+}
+
+// 3D Procedural X-Matrix Stopper Pin (Butée de jonction X-Matrix avec boulon de verrouillage)
+function createXMatrixStopperPin(pos, dir) {
+    const group = new THREE.Group();
+    const compColor = state.colors.anchors || "#f8fafc";
+    const matPin = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(compColor),
+        metalness: 0.92,
+        roughness: 0.12,
+        emissive: new THREE.Color(compColor),
+        emissiveIntensity: 0.15
+    });
+    const matBolt = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#64748b"),
+        metalness: 0.95,
+        roughness: 0.15
+    });
+
+    const pinRadius = 0.012;
+    const pinHeight = 0.045;
+    
+    // Main Stopper Cylinder (Butée)
+    const pinGeo = new THREE.CylinderGeometry(pinRadius, pinRadius, pinHeight, 16);
+    const pinMesh = new THREE.Mesh(pinGeo, matPin);
+    pinMesh.position.set(0, pinHeight / 2, 0);
+    group.add(pinMesh);
+
+    // Top Hexagonal Locking Bolt
+    const boltRadius = 0.009;
+    const boltHeight = 0.010;
+    const boltGeo = new THREE.CylinderGeometry(boltRadius, boltRadius, boltHeight, 6);
+    const boltMesh = new THREE.Mesh(boltGeo, matBolt);
+    boltMesh.position.set(0, pinHeight + boltHeight / 2, 0);
+    group.add(boltMesh);
+
+    // Position stopper pin along dir at the arm slot of X-Matrix (~0.055m from center)
+    const offsetPos = pos.clone().add(dir.clone().normalize().multiplyScalar(0.055));
+    group.position.copy(offsetPos);
+
+    return group;
+}
+
 function update3DScene() {
     if (!scene) return;
 
@@ -1387,8 +1497,13 @@ function update3DScene() {
     if (cableGroup) {
         while (cableGroup.children.length > 0) {
             const child = cableGroup.children[0];
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
+            child.traverse((obj) => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                    else obj.material.dispose();
+                }
+            });
             cableGroup.remove(child);
         }
     }
@@ -1472,8 +1587,8 @@ function update3DScene() {
                 rotY = Math.atan2(dz, dx);
             }
 
-            // Orient extremity anchors in OPPOSITE directions along the line
-            if (idx === nodesList.length - 1 && nodesList.length > 1) {
+            // Orient extremity anchors in OPPOSITE directions strictly for LONG RANGE
+            if ((state.product === "LONG RANGE" || (pos.compId && pos.compId.includes("LongRange"))) && idx === nodesList.length - 1 && nodesList.length > 1) {
                 rotY = (rotY || 0) + Math.PI;
             }
 
@@ -1630,6 +1745,10 @@ function update3DScene() {
             });
             const meshCombined = new THREE.Mesh(tubeGeoCombined, cableMat);
             cableGroup.add(meshCombined);
+
+            // Add crimped cable end loops (boucles serties avec manchons)
+            cableGroup.add(createCableLoopTerminal(startExt, vStart, state.colors.cable));
+            cableGroup.add(createCableLoopTerminal(endExt2, vEnd2, state.colors.cable));
         }
     } else {
         // MIDPOINT T-JUNCTION: Separate Line 1 and Line 2 cables
@@ -1661,6 +1780,10 @@ function update3DScene() {
             });
             const mesh1 = new THREE.Mesh(tubeGeo1, cableMat);
             cableGroup.add(mesh1);
+
+            // Add crimped cable end loops (boucles serties avec manchons) for Line 1
+            cableGroup.add(createCableLoopTerminal(startExt, vStart, state.colors.cable));
+            cableGroup.add(createCableLoopTerminal(endExt, vEnd, state.colors.cable));
         }
 
         if (layout.line2.length > 0 && layout.junctionNode) {
@@ -1688,6 +1811,60 @@ function update3DScene() {
                 });
                 const mesh2 = new THREE.Mesh(tubeGeo2, cableMat2);
                 cableGroup.add(mesh2);
+
+                // Add crimped cable end loop at Line 2 end
+                cableGroup.add(createCableLoopTerminal(endExt2, vEnd2, state.colors.cable));
+            }
+        }
+    }
+
+    // Render Cable Loops & Stopper Pins (Butées) on X-Matrix arms
+    const isXMatrixChecked = (COMPONENTS_DB[state.product] || []).some(c => c.id === "X-Matrix" && c.checked);
+    const hasJunctionXMat = state.hasLine2 || isXMatrixChecked;
+
+    if (hasJunctionXMat && line1TopPts.length > 0) {
+        if (state.xMatrixLocation === "end" && state.hasLine2 && line2TopPts.length > 0) {
+            // CORNER X-MATRIX JUNCTION
+            const jTopPt = line1TopPts[line1TopPts.length - 1];
+            const vDir1 = (line1TopPts.length > 1) ? line1TopPts[line1TopPts.length - 2].clone().sub(jTopPt).normalize() : new THREE.Vector3(-1, 0, 0);
+            const vDir2 = line2TopPts[0].clone().sub(jTopPt).normalize();
+            const vDir3 = vDir1.clone().negate();
+            const vDir4 = vDir2.clone().negate();
+
+            cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir1.clone().multiplyScalar(0.02)), vDir1, state.colors.cable));
+            cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir2.clone().multiplyScalar(0.02)), vDir2, state.colors.cable));
+            cableGroup.add(createXMatrixStopperPin(jTopPt, vDir3));
+            cableGroup.add(createXMatrixStopperPin(jTopPt, vDir4));
+        } else {
+            // MIDPOINT X-MATRIX JUNCTION
+            const jIndex = layout.line1.findIndex(n => n.type === "x_matrix");
+            if (jIndex >= 0 && line1TopPts[jIndex]) {
+                const jTopPt = line1TopPts[jIndex];
+                const vDir1 = (jIndex > 0) ? line1TopPts[jIndex - 1].clone().sub(jTopPt).normalize() : new THREE.Vector3(-1, 0, 0);
+                const vDir2 = (jIndex < line1TopPts.length - 1) ? line1TopPts[jIndex + 1].clone().sub(jTopPt).normalize() : new THREE.Vector3(1, 0, 0);
+
+                let vDir3 = new THREE.Vector3(0, 0, 1);
+                if (state.hasLine2 && line2TopPts.length > 0) {
+                    vDir3 = line2TopPts[0].clone().sub(jTopPt).normalize();
+                } else {
+                    vDir3 = new THREE.Vector3(-vDir1.z, 0, vDir1.x).normalize();
+                }
+                const vDir4 = vDir3.clone().negate();
+
+                // Arm 1 (Line 1 incoming): Cable Loop
+                cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir1.clone().multiplyScalar(0.02)), vDir1, state.colors.cable));
+                // Arm 2 (Line 1 outgoing): Cable Loop
+                cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir2.clone().multiplyScalar(0.02)), vDir2, state.colors.cable));
+
+                // Arm 3 (Line 2 branch side): Loop if line 2 present, else Stopper Pin (Butée)
+                if (state.hasLine2 && line2TopPts.length > 0) {
+                    cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir3.clone().multiplyScalar(0.02)), vDir3, state.colors.cable));
+                } else {
+                    cableGroup.add(createXMatrixStopperPin(jTopPt, vDir3));
+                }
+
+                // Arm 4 (Unused arm): Stopper Pin (Butée)
+                cableGroup.add(createXMatrixStopperPin(jTopPt, vDir4));
             }
         }
     }
@@ -2001,18 +2178,29 @@ function setupUIEventListeners() {
         update3DScene();
     });
 
-    document.getElementById("color-roof").addEventListener("input", (e) => {
-        state.colors.roof = e.target.value;
-        update3DScene();
-    });
-    document.getElementById("color-anchors").addEventListener("input", (e) => {
-        state.colors.anchors = e.target.value;
-        update3DScene();
-    });
-    document.getElementById("color-cable").addEventListener("input", (e) => {
-        state.colors.cable = e.target.value;
-        update3DScene();
-    });
+    const colRoof = document.getElementById("color-roof");
+    if (colRoof) {
+        colRoof.addEventListener("input", (e) => {
+            state.colors.roof = e.target.value;
+            update3DScene();
+        });
+    }
+
+    const colAnchors = document.getElementById("color-anchors");
+    if (colAnchors) {
+        colAnchors.addEventListener("input", (e) => {
+            state.colors.anchors = e.target.value;
+            update3DScene();
+        });
+    }
+
+    const colCable = document.getElementById("color-cable");
+    if (colCable) {
+        colCable.addEventListener("input", (e) => {
+            state.colors.cable = e.target.value;
+            update3DScene();
+        });
+    }
 
     const checkObs = document.getElementById("check-obstacles");
     if (checkObs) {

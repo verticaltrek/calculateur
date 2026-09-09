@@ -655,9 +655,9 @@ html, body {
     height: 10px;
     border-radius: 50%;
 }
-.legend-dot.color-roof { background: #cbd5e1; }
-.legend-dot.color-anchor { background: #808080; }
-.legend-dot.color-cable { background: #64748b; }
+.legend-dot.color-roof { background: #64748b; }
+.legend-dot.color-anchor { background: #f8fafc; border: 1px solid #94a3b8; }
+.legend-dot.color-cable { background: #f8fafc; border: 1px solid #94a3b8; }
 
 /* RIGHT PANEL (SIDEBAR) */
 .right-panel {
