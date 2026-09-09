@@ -1,1 +1,1 @@
-Placez ici les fichiers .obj spécifiques au système NEW PRO.
+Placez ici les fichiers .glb spécifiques au système NEW PRO.

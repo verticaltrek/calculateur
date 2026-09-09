@@ -40,44 +40,67 @@ const state = {
 };
 
 // Real 3D Component Models Database & Exploded Views
+// Real 3D Component Models Database & Exploded Views
 const COMPONENTS_DB = {
     "NEW PRO": [
-        { id: "New_Pro", name: "NEW PRO ABSORBER", file: "models/new_pro/New_Pro.obj", checked: false, exploded: ["models/new_pro/New_Pro_exploded1.png", "models/new_pro/New_Pro_exploded2.png", "models/new_pro/New_Pro_exploded3.png"] },
-        { id: "X-Matrix", name: "X-MATRIX JONCTION MULTIDIRECTIONNELLE", file: "models/new_pro/X-Matrix.obj", checked: false, exploded: ["models/new_pro/X-Matrix_exploded1.png", "models/new_pro/X-Matrix_exploded2.png", "models/new_pro/X-Matrix_exploded3.png"] },
-        { id: "Mini_Omega", name: "MINI OMEGA", file: "models/new_pro/Mini_Omega.obj", checked: false, exploded: ["models/new_pro/Mini_Omega_exploded1.png", "models/new_pro/Mini_Omega_exploded2.png", "models/new_pro/Mini_Omega_exploded3.png"] },
-        { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/new_pro/P_Inox_Rigide.obj", checked: false, exploded: ["models/new_pro/P_Inox_Rigide_exploded1.png", "models/new_pro/P_Inox_Rigide_exploded2.png", "models/new_pro/P_Inox_Rigide_exploded3.png"] },
-        { id: "X-Cone", name: "X-CONE", file: "models/new_pro/X-Cone.obj", checked: false, exploded: ["models/new_pro/X-Cone_exploded1.png", "models/new_pro/X-Cone_exploded3.png"] }
+        { id: "New_Pro", name: "NEW PRO ABSORBER", file: "models/new_pro/New_Pro.glb", checked: false, exploded: ["models/new_pro/New_Pro_exploded1.png", "models/new_pro/New_Pro_exploded2.png", "models/new_pro/New_Pro_exploded3.png"] },
+        { id: "X-Matrix", name: "X-MATRIX JONCTION MULTIDIRECTIONNELLE", file: "models/new_pro/X-Matrix.glb", checked: false, exploded: ["models/new_pro/X-Matrix_exploded1.png", "models/new_pro/X-Matrix_exploded2.png", "models/new_pro/X-Matrix_exploded3.png"] },
+        { id: "Mini_Omega", name: "MINI OMEGA", file: "models/new_pro/Mini_Omega.glb", checked: false, exploded: ["models/new_pro/Mini_Omega_exploded1.png", "models/new_pro/Mini_Omega_exploded2.png", "models/new_pro/Mini_Omega_exploded3.png"] },
+        { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/new_pro/P_Inox_Rigide.glb", checked: false, exploded: ["models/new_pro/P_Inox_Rigide_exploded1.png", "models/new_pro/P_Inox_Rigide_exploded2.png", "models/new_pro/P_Inox_Rigide_exploded3.png"] },
+        { id: "X-Cone", name: "X-CONE", file: "models/new_pro/X-Cone.glb", checked: false, exploded: ["models/new_pro/X-Cone_exploded1.png", "models/new_pro/X-Cone_exploded3.png"] }
     ],
     "LIGHT PRO": [
-        { id: "LightPro", name: "LIGHT PRO ABSORBER", file: "models/light_pro/LightPro.obj", checked: false, exploded: ["models/light_pro/LightPro_exploded1.png", "models/light_pro/LightPro_exploded2.png", "models/light_pro/LightPro_exploded3.png"] },
-        { id: "PB_HOOKt", name: "POTELET PB HOOKT", file: "models/light_pro/PB_HOOKt.obj", checked: false, exploded: ["models/light_pro/PB_HOOKT_exploded1.png", "models/light_pro/PB_HOOKT_exploded2.png", "models/light_pro/PB_HOOKT_exploded3.png"] },
-        { id: "P_Galva", name: "POTELET GALVA RIGIDE", file: "models/light_pro/P_Galva_Rigide.obj", checked: false, exploded: ["models/light_pro/P_Galva_Rigide_exploded1.png", "models/light_pro/P_Galva_Rigide_exploded2.png", "models/light_pro/P_Galva_Rigide_exploded3.png"] },
-        { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/light_pro/P_Inox_Rigide.obj", checked: false, exploded: ["models/light_pro/P_Inox_Rigide_exploded1.png", "models/light_pro/P_Inox_Rigide_exploded2.png", "models/light_pro/P_Inox_Rigide_exploded3.png"] }
+        { id: "LightPro", name: "LIGHT PRO ABSORBER", file: "models/light_pro/LightPro.glb", checked: false, exploded: ["models/light_pro/LightPro_exploded1.png", "models/light_pro/LightPro_exploded2.png", "models/light_pro/LightPro_exploded3.png"] },
+        { id: "PB_HOOKt", name: "POTELET PB HOOKT", file: "models/light_pro/PB_HOOKT.glb", checked: false, exploded: ["models/light_pro/PB_HOOKT_exploded1.png", "models/light_pro/PB_HOOKT_exploded2.png", "models/light_pro/PB_HOOKT_exploded3.png"] },
+        { id: "P_Galva", name: "POTELET GALVA RIGIDE", file: "models/light_pro/P_Galva_Rigide.glb", checked: false, exploded: ["models/light_pro/P_Galva_Rigide_exploded1.png", "models/light_pro/P_Galva_Rigide_exploded2.png", "models/light_pro/P_Galva_Rigide_exploded3.png"] },
+        { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/light_pro/P_Inox_Rigide.glb", checked: false, exploded: ["models/light_pro/P_Inox_Rigide_exploded1.png", "models/light_pro/P_Inox_Rigide_exploded2.png", "models/light_pro/P_Inox_Rigide_exploded3.png"] }
     ],
     "LONG RANGE": [
-        { id: "LongRange", name: "LONG RANGE HEAVY ABSORBER", file: "models/long_range/LongRange.obj", checked: false, exploded: ["models/long_range/LongRange_exploded1.png", "models/long_range/LongRange_exploded2.png", "models/long_range/LongRange_exploded3.png"] },
-        { id: "A-Fix", name: "A-FIX ANCHOR", file: "models/long_range/A-Fix.obj", checked: false, exploded: ["models/long_range/A-Fix_exploded1.png", "models/long_range/A-Fix_exploded2.png"] }
+        { id: "LongRange", name: "LONG RANGE HEAVY ABSORBER", file: "models/long_range/LongRange.glb", checked: false, exploded: ["models/long_range/LongRange_exploded1.png", "models/long_range/LongRange_exploded2.png", "models/long_range/LongRange_exploded3.png"] },
+        { id: "A-Fix", name: "A-FIX ANCHOR", file: "models/long_range/LongRange.glb", checked: false, exploded: ["models/long_range/A-Fix_exploded1.png", "models/long_range/A-Fix_exploded2.png"] }
     ]
 };
 
-// 3D OBJ Models Cache
+// 3D Models Cache & Loaders (GLTF / GLB primary with OBJ fallback)
 const objCache = {};
-const objLoader = new THREE.OBJLoader();
+const gltfLoader = typeof THREE !== "undefined" && THREE.GLTFLoader ? new THREE.GLTFLoader() : null;
+const objLoader = typeof THREE !== "undefined" && THREE.OBJLoader ? new THREE.OBJLoader() : null;
 
 function loadOBJModel(filePath) {
     if (objCache[filePath]) {
         return Promise.resolve(objCache[filePath]);
     }
     return new Promise((resolve) => {
-        objLoader.load(
-            filePath,
-            (object) => {
-                objCache[filePath] = object;
-                resolve(object);
-            },
-            undefined,
-            () => resolve(null)
-        );
+        const isGLTF = filePath.endsWith(".glb") || filePath.endsWith(".gltf");
+        if (isGLTF && gltfLoader) {
+            gltfLoader.load(
+                filePath,
+                (gltf) => {
+                    objCache[filePath] = gltf.scene;
+                    resolve(gltf.scene);
+                },
+                undefined,
+                (err) => {
+                    console.warn("Failed to load GLTF model:", filePath, err);
+                    resolve(null);
+                }
+            );
+        } else if (objLoader) {
+            objLoader.load(
+                filePath,
+                (object) => {
+                    objCache[filePath] = object;
+                    resolve(object);
+                },
+                undefined,
+                (err) => {
+                    console.warn("Failed to load OBJ model:", filePath, err);
+                    resolve(null);
+                }
+            );
+        } else {
+            resolve(null);
+        }
     });
 }
 
@@ -1182,7 +1205,7 @@ function createAnchorMesh(colorHex, nodeType = "intermediaire", compId = null, r
                 checkedComps.forEach(c => filesToRender.push(c.file));
             }
         } else if (nodeType === "extremite") {
-            // Include checked absorbers (LongRange.obj contains both LongRange + A-Fix)
+            // Include checked absorbers (LongRange.glb contains both LongRange + A-Fix)
             const checkedAbsorbers = list.filter(c => (c.id === "New_Pro" || c.id === "LightPro" || c.id === "LongRange") && c.checked);
             const hasLongRangeAbsorber = checkedAbsorbers.some(a => a.id === "LongRange");
             

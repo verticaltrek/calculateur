@@ -1,1 +1,1 @@
-Placez ici les fichiers .obj spécifiques au système LONG RANGE.
+Placez ici les fichiers .glb spécifiques au système LONG RANGE.
