@@ -15,7 +15,7 @@ const state = {
     roofSlope: 15,        // Slope angle in degrees
     nbUsers: 1,           // Max Active Users
     fallFactor: 1,        // Fall Factor (0, 1, 2)
-    product: "NEW PRO",   // HOOKT Product Family ("NEW PRO", "LIGHT PRO", "LONG RANGE")
+    product: null,        // HOOKT Product Family ("NEW PRO", "LIGHT PRO", "LONG RANGE", or null until user selects)
     norm: "EN 795",       // Regulatory Standard
     oshaSpanMode: "unique", // OSHA/ANSI span mode: "unique" (2 anchors) or "multi" (4 anchors)
     viewMode: "3d",       // Camera View ("3d", "2d")
@@ -39,21 +39,539 @@ const state = {
     }
 };
 
+// ==========================================
+// INTERNATIONALIZATION (i18n) ENGINE
+// Languages: 0 = FR (Français), 1 = EN (English), 2 = ES (Español)
+// ==========================================
+const TRANSLATIONS = {
+    brandBadge: ["SÉCURITÉ EN HAUTEUR", "HEIGHT SAFETY", "SEGURIDAD EN ALTURA"],
+    homeSubtitle: [
+        "Configurateur Intelligent de Lignes de Vie pour Toitures",
+        "Smart Roof Lifeline Configurator",
+        "Configurador Inteligente de Líneas de Vida para Cubiertas"
+    ],
+    homeDescription: [
+        "Dimensionnez, visualisez en 3D/2D et éditez la note de conformité réglementaire (EN 795-C, TS 16415, OSHA/ANSI) pour les systèmes HOOKT New Pro, Light Pro et Long/Super/Ultra Range.",
+        "Size, visualize in 3D/2D and generate the regulatory compliance note (EN 795-C, TS 16415, OSHA/ANSI) for HOOKT New Pro, Light Pro and Long/Super/Ultra Range systems.",
+        "Dimensione, visualice en 3D/2D y genere la nota de conformidad normativa (EN 795-C, TS 16415, OSHA/ANSI) para los sistemas HOOKT New Pro, Light Pro y Long/Super/Ultra Range."
+    ],
+    startBtnText: ["Démarrer une Configuration", "Start Configuration", "Iniciar Configuración"],
+
+    modalTitle: ["Paramètres de la Toiture", "Roof Parameters", "Parámetros de la Cubierta"],
+    lblShape: ["Forme / Typologie du Toit :", "Roof Shape / Typology:", "Forma / Tipología del Techo:"],
+    roofShapes: {
+        flat: ["Toit Plat (Terrasse Standard)", "Flat Roof (Standard Terrace)", "Techo Plano (Terraza Estándar)"],
+        flat_overhead: ["Toit Plat (Overhead - Long/Super/Ultra Range uniquement)", "Flat Roof (Overhead - Long/Super/Ultra Range only)", "Techo Plano (Overhead - Solo Long/Super/Ultra Range)"],
+        sloped: ["Toit Incliné (Monopente avec pente)", "Sloped Roof (Single pitch)", "Techo Inclinado (Monopassante)"],
+        triangle: ["Toit Triangulaire (Pignon / Double Pente)", "Gabled / Triangular Roof", "Techo Triangular (A dos aguas)"]
+    },
+    lblSlope: ["Pente du toit :", "Roof Slope:", "Pendiente del techo:"],
+    lblLineLen: ["Longueur Ligne de Vie :", "Lifeline Length:", "Longitud Línea de Vida:"],
+    lblUsers: ["Nombre d'utilisateurs max :", "Max Active Users:", "Número máx. de usuarios:"],
+    lblChute: ["Facteur de chute :", "Fall Factor:", "Factor de Caída:"],
+    fallFactors: {
+        0: ["Facteur 0 (Restreint / Overhead)", "Factor 0 (Restrained / Overhead)", "Factor 0 (Restringido / Overhead)"],
+        1: ["Facteur 1 (Standard)", "Factor 1 (Standard)", "Factor 1 (Estándar)"],
+        2: ["Facteur 2 (Sévère)", "Factor 2 (Severe)", "Factor 2 (Severo)"]
+    },
+    lblHasLine2: ["Activer une seconde direction (Ligne 2)", "Enable a second direction (Line 2)", "Activar una segunda dirección (Línea 2)"],
+    lblLine2Len: ["Longueur Ligne 2 :", "Line 2 Length:", "Longitud Línea 2:"],
+    lblXmatrixLoc: ["Type / Emplacement Jonction :", "Junction Type / Location:", "Tipo / Ubicación de la Unión:"],
+    xmatrixLocs: {
+        mid: ["En milieu de ligne (Jonction X-Matrix)", "Mid-line (X-Matrix Junction)", "En medio de la línea (Unión X-Matrix)"],
+        end: ["En extrémité de ligne (Virage / Corner)", "Line end (Corner / Turn)", "En el extremo de la línea (Esquina / Giro)"]
+    },
+    cancelBtn: ["Annuler", "Cancel", "Cancelar"],
+    submitBtn: ["Valider et Générer 3D", "Validate & Generate 3D", "Validar y Generar 3D"],
+
+    headerSubtitle: ["Ligne de Vie Configurator 3D", "Lifeline 3D Configurator", "Configurador 3D de Línea de Vida"],
+    reconfigBtn: ["Dimensions", "Dimensions", "Dimensiones"],
+    canvasTitle: ["Visualisation 3D / 2D", "3D / 2D Visualization", "Visualización 3D / 2D"],
+    btnView3d: ["3D", "3D", "3D"],
+    btnView2d: ["2D Dessus", "2D Top View", "2D Vista Superior"],
+    camResetTitle: ["Réinitialiser la caméra", "Reset Camera", "Restablecer cámara"],
+    gridToggleTitle: ["Masquer/Afficher Grille", "Toggle Grid", "Alternar cuadrícula"],
+    fullscreenTitle: ["Plein écran", "Fullscreen", "Pantalla completa"],
+    warningText: ["La portée réelle dépasse la portée autorisée !", "The actual span exceeds the allowed span!", "¡La luz real supera la luz permitida!"],
+    legendRoof: ["Roof Surface", "Roof Surface", "Superficie del Techo"],
+    legendAnchor: ["Potelets d'Ancrage", "Anchor Posts", "Postes de Anclaje"],
+    legendCable: ["Câble de Ligne de Vie", "Lifeline Cable", "Cable de Línea de Vida"],
+
+    groupTitlePieces: ["GAMME & COMPOSANTS HOOKT", "HOOKT RANGE & COMPONENTS", "GAMA Y COMPONENTES HOOKT"],
+    sysNames: {
+        longRange: ["LONG / SUPER / ULTRA RANGE", "LONG / SUPER / ULTRA RANGE", "LONG / SUPER / ULTRA RANGE"]
+    },
+    sysTags: {
+        newPro: ["Max 15m | 5 pers.", "Max 15m | 5 users", "Máx 15m | 5 pers."],
+        lightPro: ["Max 15m | 3 pers.", "Max 15m | 3 users", "Máx 15m | 3 pers."],
+        longRange: ["Max 56m | 3 pers.", "Max 56m | 3 users", "Máx 56m | 3 pers."]
+    },
+    sysDescs: {
+        newPro: ["Système haute performance avec absorbeurs intégrés pour bac acier et béton.", "High-performance system with integrated absorbers for trapezoidal sheet and concrete.", "Sistema de alto rendimiento con absorbedores integrados para chapa y hormigón."],
+        lightPro: ["Solution légère et économique pour toitures tertiaires et industrielles.", "Lightweight and economical solution for commercial and industrial roofs.", "Solución ligera y económica para cubiertas comerciales e industriales."],
+        longRange: ["Ligne de vie pour très grandes portées (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m).", "Lifeline for long spans (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m).", "Línea de vida para grandes luces (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m)."]
+    },
+    lblComponentsSelector: ["PIÈCES DU SYSTÈME (COCHER POUR AFFICHER EN 3D) :", "SYSTEM COMPONENTS (CHECK TO DISPLAY IN 3D):", "PIEZAS DEL SISTEMA (MARCAR PARA MOSTRAR EN 3D):"],
+    emptyStateTitle: ["Veuillez choisir un système HOOKT ci-dessus", "Please choose a HOOKT system above", "Por favor elija un sistema HOOKT arriba"],
+    emptyStateSub: ["Cliquez sur NEW PRO, LIGHT PRO ou LONG / SUPER / ULTRA RANGE pour afficher et configurer la ligne de vie 3D.", "Click on NEW PRO, LIGHT PRO or LONG / SUPER / ULTRA RANGE to display and configure the 3D lifeline.", "Haga clic en NEW PRO, LIGHT PRO o LONG / SUPER / ULTRA RANGE para mostrar y configurar la línea de vida 3D."],
+
+    components: {
+        "New_Pro": ["NEW PRO ABSORBER", "NEW PRO ABSORBER", "ABSORBEDOR NEW PRO"],
+        "X-Matrix": ["X-MATRIX JONCTION MULTIDIRECTIONNELLE", "X-MATRIX MULTIDIRECTIONAL JUNCTION", "UNIÓN MULTIDIRECCIONAL X-MATRIX"],
+        "Mini_Omega": ["MINI OMEGA (avec NEW PRO)", "MINI OMEGA (with NEW PRO)", "MINI OMEGA (con NEW PRO)"],
+        "P_Inox": ["POTELET INOX RIGIDE (avec NEW PRO)", "STAINLESS RIGID POST (with NEW PRO)", "POSTE INOX RÍGIDO (con NEW PRO)"],
+        "X-Cone": ["X-CONE", "X-CONE", "X-CONE"],
+        "LightPro": ["LIGHT PRO ABSORBER", "LIGHT PRO ABSORBER", "ABSORBEDOR LIGHT PRO"],
+        "PB_HOOKt": ["POTELET PB HOOKT (avec LIGHT PRO)", "PB HOOKT POST (with LIGHT PRO)", "POSTE PB HOOKT (con LIGHT PRO)"],
+        "P_Galva": ["POTELET GALVA RIGIDE (avec LIGHT PRO)", "GALVANIZED RIGID POST (with LIGHT PRO)", "POSTE GALVA RÍGIDO (con LIGHT PRO)"],
+        "LongRange": ["LONG RANGE HEAVY ABSORBER", "LONG RANGE HEAVY ABSORBER", "ABSORBEDOR HEAVY LONG RANGE"],
+        "A-Fix": ["A-FIX ANCHOR (avec LONG RANGE)", "A-FIX ANCHOR (with LONG RANGE)", "ANCLAJE A-FIX (con LONG RANGE)"]
+    },
+
+    nodeInspectorTitle: ["INSPECTEUR & ORIENTATION 3D", "INSPECTOR & 3D ORIENTATION", "INSPECTOR Y ORIENTACIÓN 3D"],
+    lblNodeId: ["Potelet sélectionné :", "Selected Post:", "Poste Seleccionado:"],
+    lblNodeCoords: ["Coordonnées (X, Z) :", "Coordinates (X, Z):", "Coordenadas (X, Z):"],
+    lblNodeSpan: ["Distance au suivant :", "Distance to Next:", "Distancia al Siguiente:"],
+    lblNodeRole: ["Rôle du Potelet :", "Post Role:", "Rol del Poste:"],
+    nodeRoles: {
+        extremite: ["Ancrage d'Extrémité (avec Absorbeur)", "End Anchor (with Absorber)", "Anclaje de Extremo (con Absorbedor)"],
+        intermediaire: ["Potelet Intermédiaire", "Intermediate Post", "Poste Intermedio"],
+        x_matrix: ["Platine X-MATRIX (Jonction Multi-Directionnelle)", "X-MATRIX Plate (Multi-Directional Junction)", "Placa X-MATRIX (Unión Multidireccional)"],
+        angle: ["Potelet d'Angle", "Corner Post", "Poste de Esquina"]
+    },
+    lblNodeComp: ["Modèle 3D HOOKT Assigné :", "Assigned HOOKT 3D Model:", "Modelo 3D HOOKT Asignado:"],
+    lblNodeRot: ["Orientation 3D :", "3D Orientation:", "Orientación 3D:"],
+    btnAlignText: ["Aligner Câble", "Align Cable", "Alinear Cable"],
+    btnDeleteText: ["Supprimer ce Potelet", "Delete this Post", "Eliminar este Poste"],
+
+    groupTitleCalc: ["NOTE DE CALCUL DE CONFORMITÉ", "COMPLIANCE CALCULATION NOTE", "NOTA DE CÁLCULO DE CONFORMIDAD"],
+    subtabSpanUnique: ["Portée Unique (2 ancrages)", "Single Span (2 anchors)", "Luz Única (2 anclajes)"],
+    subtabSpanMulti: ["Multi-Portée (4 ancrages)", "Multi-Span (4 anchors)", "Multiluz (4 anclajes)"],
+    lblAnchorCount: ["Potelets / Ancrages", "Posts / Anchors", "Postes / Anclajes"],
+    lblAbsorberCount: ["Absorbeurs", "Absorbers", "Absorbedores"],
+    lblFallFactorCalc: ["Facteur Chute :", "Fall Factor:", "Factor Caída:"],
+    lblMaxAllowedSpanCalc: ["Portée Max Aut. :", "Max Allowed Span:", "Luz Máx. Perm.:"],
+    sideTitleLifeline: ["Résultats sur la Ligne de Vie", "Lifeline Results", "Resultados de la Línea de Vida"],
+    lblTotalLineLenRow: ["Longueur développée :", "Total Length:", "Longitud Total:"],
+    lblSpanLRow: ["Portée réelle max :", "Max Actual Span:", "Luz Real Máxima:"],
+    lblForceLRow: ["Effort longe :", "Lanyard Force:", "Esfuerzo del Elemento:"],
+    lblDeflLRow: ["Flèche maximale :", "Max Deflection:", "Flecha Máxima:"],
+    lblExt1LRow: ["Force Extrémité 1 :", "End Force 1:", "Fuerza Extremo 1:"],
+    lblExt2LRow: ["Force Extrémité 2 :", "End Force 2:", "Fuerza Extremo 2:"],
+    lblExt3LRow: ["Force Ancrage 3 :", "Anchor Force 3:", "Fuerza Anclaje 3:"],
+    lblExt4LRow: ["Force Ancrage 4 :", "Anchor Force 4:", "Fuerza Anclaje 4:"],
+    btnTextExport: ["Générer Rapport (PDF)", "Generate Report (PDF)", "Generar Informe (PDF)"],
+
+    carouselTitle: ["Vue Éclatée", "Exploded View", "Vista Despiezada"],
+
+    alerts: {
+        xconeSloped: [
+            "⚠️ CONFIGURATION INCOMPATIBLE :\nL'option X-CONE est utilisable uniquement en configuration toit mono-pente (incliné).",
+            "⚠️ INCOMPATIBLE CONFIGURATION:\nThe X-CONE option can only be used on a single-slope (pitched) roof configuration.",
+            "⚠️ CONFIGURACIÓN INCOMPATIBLE:\nLa opción X-CONE solo se puede utilizar en configuración de cubierta monopendiente (inclinada)."
+        ],
+        xconeSlopeRange: [
+            "⚠️ CONFIGURATION INCOMPATIBLE :\nL'option X-CONE est utilisable uniquement pour une pente de toiture comprise entre 15° et 75°.",
+            "⚠️ INCOMPATIBLE CONFIGURATION:\nThe X-CONE option can only be used for a roof slope between 15° and 75°.",
+            "⚠️ CONFIGURACIÓN INCOMPATIBLE:\nLa opción X-CONE solo se puede utilizar para una pendiente de cubierta entre 15° y 75°."
+        ],
+        xmatrixNewProOnly: [
+            "⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.",
+            "⚠️ UNSUPPORTED CONFIGURATION:\nThe mid-span X-MATRIX junction is only available for the NEW PRO system (not Light Pro or Long Range).\nFor this specific study, please contact the HOOKT team.",
+            "⚠️ CONFIGURACIÓN NO COMPATIBLE:\nLa unión X-MATRIX a mitad de línea solo está disponible para el sistema NEW PRO (no Light Pro ni Long Range).\nPara este estudio específico, póngase en contacto con el equipo de HOOKT."
+        ],
+        line2FlatOnly: [
+            "⚠️ CONFIGURATION INCOMPATIBLE :\nLa seconde direction (Ligne 2) peut uniquement être sélectionnée en configuration Toit Plat (Terrasse Standard).",
+            "⚠️ INCOMPATIBLE CONFIGURATION:\nThe second direction (Line 2) can only be selected in Flat Roof configuration (Standard Terrace).",
+            "⚠️ CONFIGURACIÓN INCOMPATIBLE:\nLa segunda dirección (Línea 2) solo se puede seleccionar en configuración de Techo Plano (Terraza Estándar)."
+        ],
+        longRangeFlatOverhead: [
+            "⚠️ CONFIGURATION INCOMPATIBLE :\nLe système LONG / SUPER / ULTRA RANGE est exclusivement utilisable en configuration Toit Plat (Overhead avec poteaux hauts).\nVotre toiture actuelle est configurée différemment. Veuillez modifier les paramètres de la toiture.",
+            "⚠️ INCOMPATIBLE CONFIGURATION:\nThe LONG / SUPER / ULTRA RANGE system can only be used in Flat Roof configuration (Overhead with high posts).\nYour current roof is configured differently. Please modify roof parameters.",
+            "⚠️ CONFIGURACIÓN INCOMPATIBLE:\nEl sistema LONG / SUPER / ULTRA RANGE solo se puede utilizar en configuración de Techo Plano (Overhead con postes altos).\nSu cubierta actual está configurada de forma diferente. Modifique los parámetros de la cubierta."
+        ],
+        overheadLongRangeOnly: [
+            "⚠️ CONFIGURATION INCOMPATIBLE :\nLa configuration Toit Plat (Overhead avec poteaux hauts 3.0m) est exclusivement réservée au système LONG / SUPER / ULTRA RANGE.",
+            "⚠️ INCOMPATIBLE CONFIGURATION:\nFlat Roof (Overhead with 3.0m high posts) is exclusively reserved for the LONG / SUPER / ULTRA RANGE system.",
+            "⚠️ CONFIGURACIÓN INCOMPATIBLE:\nEl Techo Plano (Overhead con postes de 3,0 m) está reservado exclusivamente para el sistema LONG / SUPER / ULTRA RANGE."
+        ],
+        slopedNewProOnly: [
+            "⚠️ CONFIGURATION INCOMPATIBLE :\nLe toit mono-pente (incliné) est uniquement disponible pour le système NEW PRO.",
+            "⚠️ INCOMPATIBLE CONFIGURATION:\nSingle-slope (pitched) roof is only available for the NEW PRO system.",
+            "⚠️ CONFIGURACIÓN INCOMPATIBLE:\nLa cubierta monopendiente (inclinada) solo está disponible para el sistema NEW PRO."
+        ],
+        usersLimit: [
+            "⚠️ LIMITATION DU SYSTÈME :\nPour les systèmes LIGHT PRO et LONG RANGE, le nombre d'utilisateurs maximal est de 3 personnes.",
+            "⚠️ SYSTEM LIMITATION:\nFor LIGHT PRO and LONG RANGE systems, the maximum number of users is 3 people.",
+            "⚠️ LIMITACIÓN DEL SISTEMA:\nPara los sistemas LIGHT PRO y LONG RANGE, el número máximo de usuarios es de 3 personas."
+        ],
+        miniOmegaNewPro: [
+            "⚠️ ALERTE CONFIGURATION INVALIDE :\nLe potelet MINI OMEGA ne s'utilise qu'avec un ancrage NEWPRO (jamais seul, ni avec Light Pro ou Longue Portée).",
+            "⚠️ INVALID CONFIGURATION ALERT:\nThe MINI OMEGA post is only used with a NEWPRO anchor (never alone, nor with Light Pro or Long Range).",
+            "⚠️ ALERTA DE CONFIGURACIÓN INVÁLIDA:\nEl poste MINI OMEGA solo se utiliza con un anclaje NEWPRO (nunca solo, ni con Light Pro o Long Range)."
+        ],
+        basculantLightPro: [
+            "⚠️ ALERTE CONFIGURATION INVALIDE :\nLe potelet basculant ne s'utilise qu'avec un ancrage Light Pro.",
+            "⚠️ INVALID CONFIGURATION ALERT:\nThe tilting post is only used with a Light Pro anchor.",
+            "⚠️ ALERTA DE CONFIGURACIÓN INVÁLIDA:\nEl poste basculante solo se utiliza con un anclaje Light Pro."
+        ],
+        rigideNotLongRange: [
+            "⚠️ ALERTE CONFIGURATION INVALIDE :\nLe potelet rigide ne s'utilise qu'avec les gammes NEWPRO ou Light Pro.",
+            "⚠️ INVALID CONFIGURATION ALERT:\nThe rigid post is only used with NEWPRO or Light Pro ranges.",
+            "⚠️ ALERTA DE CONFIGURACIÓN INVÁLIDA:\nEl poste rígido solo se utiliza con las gamas NEWPRO o Light Pro."
+        ],
+        afixLongRangeOnly: [
+            "⚠️ ALERTE CONFIGURATION INVALIDE :\nLa pièce A.FIX ne s'utilise qu'avec la gamme Longue Portée.",
+            "⚠️ INVALID CONFIGURATION ALERT:\nThe A.FIX component is only used with the Long Range system.",
+            "⚠️ ALERTA DE CONFIGURACIÓN INVÁLIDA:\nLa pieza A.FIX solo se utiliza con la gama Long Range."
+        ],
+        longRangeLengthRange: [
+            "⚠️ LONGUEUR DE LIGNE NON CONFORME :\nPour le système LONG RANGE, vous devez choisir une longueur de ligne entre 10 et 56 m.",
+            "⚠️ NON-COMPLIANT LINE LENGTH:\nFor the LONG RANGE system, line length must be between 10 and 56 m.",
+            "⚠️ LONGITUD DE LÍNEA NO CONFORME:\nPara el sistema LONG RANGE, la longitud de la línea debe estar entre 10 y 56 m."
+        ],
+        pdfLoading: [
+            "Chargement du générateur PDF en cours... Veuillez réessayer dans un instant.",
+            "PDF generator is loading... Please try again in a moment.",
+            "Cargando el generador de PDF... Por favor inténtelo de nouveau en un momento."
+        ]
+    },
+
+    pdf: {
+        title: [
+            "RAPPORT D'INSTALLATION & NOTE DE CALCUL LIGNE DE VIE",
+            "INSTALLATION REPORT & LIFELINE CALCULATION NOTE",
+            "INFORME DE INSTALACIÓN Y NOTA DE CÁLCULO DE LÍNEA DE VIDA"
+        ],
+        sec1Title: [
+            "1. Synthèse de la Ligne de Vie HOOKT",
+            "1. HOOKT Lifeline Overview",
+            "1. Resumen de la Línea de Vida HOOKT"
+        ],
+        genDate: ["Date de génération : ", "Generation date: ", "Fecha de generación: "],
+        productRange: ["Gamme de produit : ", "Product range: ", "Gama de producto: "],
+        calcStandard: ["Norme de calcul : ", "Calculation standard: ", "Norma de cálculo: "],
+        fallFactor: ["Facteur de chute : Facteur ", "Fall factor: Factor ", "Factor de caída: Factor "],
+        anchorCount: ["Nombre d'ancrages (", "Number of anchors (", "Número de anclajes ("],
+        absorberCount: ["Nombre d'absorbeurs (", "Number of absorbers (", "Número de absorbedores ("],
+        mountingSupport: ["Support de pose : ", "Mounting surface: ", "Soporte de instalación: "],
+        roofSlope: ["Pente de toiture : ", "Roof slope: ", "Pendiente de cubierta: "],
+        linesSummary: ["Lignes : L1 = ", "Lines: L1 = ", "Líneas: L1 = "],
+        lineLengthL1: ["Longueur Ligne (L1) : ", "Lifeline Length (L1): ", "Longitud Línea (L1): "],
+        totalDevLength: ["Longueur totale développée : ", "Total developed length: ", "Longitud total desarrollada: "],
+        maxUsers: ["Nombre d'utilisateurs max : ", "Max active users: ", "Número máx. de usuarios: "],
+        
+        concrete: ["Dalle Béton", "Concrete Slab", "Losa de Hormigón"],
+        metal: ["Bac Acier Nervuré", "Trapezoidal Metal Sheet", "Chapa de Acero Nervada"],
+        bitumen: ["Étanchéité Bitume", "Bitumen Membrane", "Impermeabilización Bituminosa"],
+        metalOther: ["Structure Metal / Autre", "Steel Structure / Other", "Estructura Metálica / Otro"],
+
+        flatRoofPdf: ["0° (Toit Plat)", "0° (Flat Roof)", "0° (Techo Plano)"],
+        slopedRoofPdf: ["Toit Incliné", "Sloped Roof", "Techo Inclinado"],
+        triangleRoofPdf: ["Toit Triangulaire", "Gabled Roof", "Techo Triangular"],
+
+        midJuncPdf: ["Jonction X-Matrix Milieu", "Mid-line X-Matrix Junction", "Unión X-Matrix Media"],
+        endJuncPdf: ["Jonction Virage/Extrémité", "Corner/End Junction", "Unión Esquina/Extremo"],
+
+        sec2Title: [
+            "2. Résultats Mécaniques & Sollicitations",
+            "2. Mechanical Results & Loads",
+            "2. Resultados Mecánicos y Solicitaciones"
+        ],
+        table2Headers: [
+            ["Indicateur Mécanique", "Valeur Calculée"],
+            ["Mechanical Indicator", "Calculated Value"],
+            ["Indicador Mecánico", "Valor Calculado"]
+        ],
+        rowMaxSpan: ["Portée réelle max", "Max real span", "Luz real máxima"],
+        rowForceL: ["Effort longe (Fmax)", "Lanyard force (Fmax)", "Esfuerzo de elemento de amarre (Fmáx)"],
+        rowDefl: ["Flèche maximale", "Max deflection", "Flecha máxima"],
+        rowExt1: ["Force Extrémité 1", "End Force 1", "Fuerza Extremo 1"],
+        rowExt2: ["Force Extrémité 2", "End Force 2", "Fuerza Extremo 2"],
+        rowExt3: ["Force Ancrage 3", "Anchor Force 3", "Fuerza Anclaje 3"],
+        rowExt4: ["Force Ancrage 4", "Anchor Force 4", "Fuerza Anclaje 4"],
+
+        sec3Title: [
+            "3. Nomenclatures des Composants & Fixations Préconisées",
+            "3. Component Bill of Materials & Recommended Fasteners",
+            "3. Nomenclatura de Componentes y Fijaciones Recomendadas"
+        ],
+        table3Headers: [
+            ["Nom de la pièce", "Nombre de fixations", "Type de fixation"],
+            ["Component Name", "Fastener Count", "Fastener Type"],
+            ["Nombre de la pieza", "Número de fijaciones", "Tipo de fijación"]
+        ],
+        matriceNewPro: ["Matrice NEWPRO (Absorbeur)", "NEWPRO Matrix (Absorber)", "Matriz NEWPRO (Absorbedor)"],
+        matriceLightPro: ["Matrice Light Pro (Absorbeur)", "Light Pro Matrix (Absorber)", "Matriz Light Pro (Absorbedor)"],
+        matriceLongRange: ["Matrice Longue Portée", "Long Range Matrix", "Matriz Larga Distancia"],
+
+        platineNewPro: ["Platine de fixation NEWPRO", "NEWPRO Mounting Plate", "Placa de fijación NEWPRO"],
+        platineLightPro: ["Platine de fixation Light Pro", "Light Pro Mounting Plate", "Placa de fijación Light Pro"],
+        platineLongRange: ["Platine de fixation Longue Portée", "Long Range Mounting Plate", "Placa de fijación Larga Distancia"],
+
+        inoxBolts: ["Boulons Inox M12 x 30 + rondelles", "Stainless Bolts M12 x 30 + washers", "Pernos Inox M12 x 30 + arandelas"],
+        noCompChecked: ["Aucun composant coché", "No component checked", "Ningún componente marcado"],
+
+        referToManual: ["Se référer à la notice", "Refer to installation manual", "Consultar el manual"],
+
+        footerRights: [
+            "© {year} HOOKT. Tous droits réservés. — Protection et Sécurité en Hauteur",
+            "© {year} HOOKT. All rights reserved. — Height Safety & Fall Protection",
+            "© {year} HOOKT. Todos los derechos reservados. — Protección y Seguridad en Altura"
+        ],
+        footerContacts: [
+            "Site Web : www.go-hookt.com   |   Email : contact@go-hookt.com   |   Tél : 05 59 52 40 48",
+            "Website: www.go-hookt.com   |   Email: contact@go-hookt.com   |   Tel: +33 5 59 52 40 48",
+            "Sitio web: www.go-hookt.com   |   Email: contact@go-hookt.com   |   Tel: +33 5 59 52 40 48"
+        ],
+        pageStr: ["Page", "Page", "Página"]
+    }
+};
+
+function getLongRangeSubRange(lineLen) {
+    const len = lineLen !== undefined ? lineLen : (state.lineLength || 15);
+    if (len < 20.0) return "LONG RANGE";
+    if (len < 34.0) return "SUPER RANGE";
+    return "ULTRA RANGE";
+}
+
+function getComponentName(c) {
+    if (!c) return "";
+    const l = state.lang || 0;
+    if (c.id === "LongRange" || c.id === "Long_Range") {
+        const sub = getLongRangeSubRange(state.lineLength);
+        if (sub === "LONG RANGE") {
+            return ["ABSORBEUR LONG RANGE", "LONG RANGE HEAVY ABSORBER", "ABSORBEDOR LONG RANGE"][l];
+        } else if (sub === "SUPER RANGE") {
+            return ["ABSORBEUR SUPER RANGE", "SUPER RANGE HEAVY ABSORBER", "ABSORBEDOR SUPER RANGE"][l];
+        } else {
+            return ["ABSORBEUR ULTRA RANGE", "ULTRA RANGE HEAVY ABSORBER", "ABSORBEDOR ULTRA RANGE"][l];
+        }
+    }
+    if (c.id === "A-Fix" || c.id === "A_Fix") {
+        return ["ANCRAGE A-FIX", "A-FIX ANCHOR", "ANCLAJE A-FIX"][l];
+    }
+    if (TRANSLATIONS.components[c.id]) {
+        return TRANSLATIONS.components[c.id][l];
+    }
+    return c.name;
+}
+
+function applyLanguage(langIndex) {
+    state.lang = parseInt(langIndex) || 0;
+    const l = state.lang;
+
+    const selectHome = document.getElementById("lang-select-home");
+    const selectDb = document.getElementById("lang-select-db");
+    if (selectHome && selectHome.value != l) selectHome.value = l;
+    if (selectDb && selectDb.value != l) selectDb.value = l;
+
+    const homeBadge = document.getElementById("home-brand-badge");
+    if (homeBadge) {
+        const span = homeBadge.querySelector("span");
+        if (span) span.textContent = TRANSLATIONS.brandBadge[l];
+    }
+    const homeSub = document.getElementById("home-subtitle");
+    if (homeSub) homeSub.textContent = TRANSLATIONS.homeSubtitle[l];
+    const homeDesc = document.getElementById("home-description");
+    if (homeDesc) homeDesc.textContent = TRANSLATIONS.homeDescription[l];
+    const startBtnText = document.getElementById("start-btn-text");
+    if (startBtnText) startBtnText.textContent = TRANSLATIONS.startBtnText[l];
+
+    const modalTitle = document.getElementById("config-modal-title");
+    if (modalTitle) modalTitle.textContent = TRANSLATIONS.modalTitle[l];
+    const lblShape = document.getElementById("lbl-shape");
+    if (lblShape) lblShape.textContent = TRANSLATIONS.lblShape[l];
+
+    const inputRoofShape = document.getElementById("input-roof-shape");
+    if (inputRoofShape) {
+        Array.from(inputRoofShape.options).forEach(opt => {
+            if (TRANSLATIONS.roofShapes[opt.value]) {
+                opt.textContent = TRANSLATIONS.roofShapes[opt.value][l];
+            }
+        });
+    }
+
+    const lblSlope = document.getElementById("lbl-slope");
+    if (lblSlope) lblSlope.textContent = TRANSLATIONS.lblSlope[l];
+    const lblLineLen = document.getElementById("lbl-line-len");
+    if (lblLineLen) lblLineLen.textContent = TRANSLATIONS.lblLineLen[l];
+    const lblUsers = document.getElementById("lbl-users");
+    if (lblUsers) lblUsers.textContent = TRANSLATIONS.lblUsers[l];
+    const lblChute = document.getElementById("lbl-chute");
+    if (lblChute) lblChute.textContent = TRANSLATIONS.lblChute[l];
+
+    const inputChute = document.getElementById("input-chute");
+    if (inputChute) {
+        Array.from(inputChute.options).forEach(opt => {
+            if (TRANSLATIONS.fallFactors[opt.value]) {
+                opt.textContent = TRANSLATIONS.fallFactors[opt.value][l];
+            }
+        });
+    }
+
+    const lblHasLine2Span = document.getElementById("lbl-has-line2-span");
+    if (lblHasLine2Span) {
+        lblHasLine2Span.innerHTML = `<i class="fa-solid fa-code-fork"></i> ${TRANSLATIONS.lblHasLine2[l]}`;
+    }
+    const lblLine2Len = document.getElementById("lbl-line2-len");
+    if (lblLine2Len) lblLine2Len.textContent = TRANSLATIONS.lblLine2Len[l];
+    const lblXmatrixLoc = document.getElementById("lbl-xmatrix-loc");
+    if (lblXmatrixLoc) lblXmatrixLoc.textContent = TRANSLATIONS.lblXmatrixLoc[l];
+
+    const selectXLoc = document.getElementById("select-xmatrix-location");
+    if (selectXLoc) {
+        Array.from(selectXLoc.options).forEach(opt => {
+            if (TRANSLATIONS.xmatrixLocs[opt.value]) {
+                opt.textContent = TRANSLATIONS.xmatrixLocs[opt.value][l];
+            }
+        });
+    }
+
+    const cancelBtn = document.getElementById("config-cancel-btn");
+    if (cancelBtn) cancelBtn.textContent = TRANSLATIONS.cancelBtn[l];
+    const submitBtn = document.getElementById("config-submit-btn");
+    if (submitBtn) {
+        const icon = submitBtn.querySelector("i");
+        submitBtn.innerHTML = `${icon ? icon.outerHTML : '<i class="fa-solid fa-check"></i>'} ${TRANSLATIONS.submitBtn[l]}`;
+    }
+
+    const appHeaderSub = document.getElementById("app-header-subtitle");
+    if (appHeaderSub) appHeaderSub.textContent = TRANSLATIONS.headerSubtitle[l];
+    const reconfigBtnText = document.getElementById("reconfig-btn-text");
+    if (reconfigBtnText) reconfigBtnText.textContent = TRANSLATIONS.reconfigBtn[l];
+    const canvasTitleText = document.getElementById("canvas-title-text");
+    if (canvasTitleText) canvasTitleText.textContent = TRANSLATIONS.canvasTitle[l];
+    const btnView3dText = document.getElementById("btn-view-3d-text");
+    if (btnView3dText) btnView3dText.textContent = TRANSLATIONS.btnView3d[l];
+    const btnView2dText = document.getElementById("btn-view-2d-text");
+    if (btnView2dText) btnView2dText.textContent = TRANSLATIONS.btnView2d[l];
+    const warningText = document.getElementById("warning-text");
+    if (warningText) warningText.textContent = TRANSLATIONS.warningText[l];
+    const legendRoof = document.getElementById("legend-roof");
+    if (legendRoof) legendRoof.textContent = TRANSLATIONS.legendRoof[l];
+    const legendAnchor = document.getElementById("legend-anchor");
+    if (legendAnchor) legendAnchor.textContent = TRANSLATIONS.legendAnchor[l];
+    const legendCable = document.getElementById("legend-cable");
+    if (legendCable) legendCable.textContent = TRANSLATIONS.legendCable[l];
+
+    const groupTitlePieces = document.getElementById("group-title-pieces");
+    if (groupTitlePieces) groupTitlePieces.textContent = TRANSLATIONS.groupTitlePieces[l];
+
+    const sysTagNewPro = document.getElementById("sys-tag-newpro");
+    if (sysTagNewPro) sysTagNewPro.textContent = TRANSLATIONS.sysTags.newPro[l];
+    const sysDescNewPro = document.getElementById("sys-desc-newpro");
+    if (sysDescNewPro) sysDescNewPro.textContent = TRANSLATIONS.sysDescs.newPro[l];
+
+    const sysTagLightPro = document.getElementById("sys-tag-lightpro");
+    if (sysTagLightPro) sysTagLightPro.textContent = TRANSLATIONS.sysTags.lightPro[l];
+    const sysDescLightPro = document.getElementById("sys-desc-lightpro");
+    if (sysDescLightPro) sysDescLightPro.textContent = TRANSLATIONS.sysDescs.lightPro[l];
+
+    const sysNameLongRange = document.getElementById("sys-name-longrange");
+    if (sysNameLongRange) sysNameLongRange.textContent = TRANSLATIONS.sysNames.longRange[l];
+    const sysTagLongRange = document.getElementById("sys-tag-longrange");
+    if (sysTagLongRange) sysTagLongRange.textContent = TRANSLATIONS.sysTags.longRange[l];
+    const sysDescLongRange = document.getElementById("sys-desc-longrange");
+    if (sysDescLongRange) sysDescLongRange.textContent = TRANSLATIONS.sysDescs.longRange[l];
+
+    const lblCompSel = document.getElementById("lbl-components-selector");
+    if (lblCompSel) {
+        lblCompSel.innerHTML = `<i class="fa-solid fa-square-check"></i> ${TRANSLATIONS.lblComponentsSelector[l]}`;
+    }
+
+    const nodeInspTitle = document.getElementById("node-inspector-title");
+    if (nodeInspTitle) nodeInspTitle.textContent = TRANSLATIONS.nodeInspectorTitle[l];
+    const lblNodeId = document.getElementById("lbl-node-id");
+    if (lblNodeId) lblNodeId.textContent = TRANSLATIONS.lblNodeId[l];
+    const lblNodeCoords = document.getElementById("lbl-node-coords");
+    if (lblNodeCoords) lblNodeCoords.textContent = TRANSLATIONS.lblNodeCoords[l];
+    const lblNodeSpan = document.getElementById("lbl-node-span");
+    if (lblNodeSpan) lblNodeSpan.textContent = TRANSLATIONS.lblNodeSpan[l];
+    const lblNodeRole = document.getElementById("lbl-node-role");
+    if (lblNodeRole) lblNodeRole.textContent = TRANSLATIONS.lblNodeRole[l];
+
+    const nodeTypeSelect = document.getElementById("node-type-select");
+    if (nodeTypeSelect) {
+        Array.from(nodeTypeSelect.options).forEach(opt => {
+            if (TRANSLATIONS.nodeRoles[opt.value]) {
+                opt.textContent = TRANSLATIONS.nodeRoles[opt.value][l];
+            }
+        });
+    }
+
+    const lblNodeComp = document.getElementById("lbl-node-comp");
+    if (lblNodeComp) lblNodeComp.textContent = TRANSLATIONS.lblNodeComp[l];
+    const lblNodeRotText = document.getElementById("lbl-node-rot-text");
+    if (lblNodeRotText) lblNodeRotText.textContent = TRANSLATIONS.lblNodeRot[l];
+    const btnAlignText = document.getElementById("btn-align-text");
+    if (btnAlignText) btnAlignText.textContent = TRANSLATIONS.btnAlignText[l];
+    const btnDeleteText = document.getElementById("btn-delete-text");
+    if (btnDeleteText) btnDeleteText.textContent = TRANSLATIONS.btnDeleteText[l];
+
+    const groupTitleCalc = document.getElementById("group-title-calc");
+    if (groupTitleCalc) groupTitleCalc.textContent = TRANSLATIONS.groupTitleCalc[l];
+    const subtabSpanUnique = document.getElementById("subtab-span-unique");
+    if (subtabSpanUnique) subtabSpanUnique.textContent = TRANSLATIONS.subtabSpanUnique[l];
+    const subtabSpanMulti = document.getElementById("subtab-span-multi");
+    if (subtabSpanMulti) subtabSpanMulti.textContent = TRANSLATIONS.subtabSpanMulti[l];
+
+    const lblAnchorCount = document.getElementById("lbl-anchor-count");
+    if (lblAnchorCount) lblAnchorCount.textContent = TRANSLATIONS.lblAnchorCount[l];
+    const lblAbsorberCount = document.getElementById("lbl-absorber-count");
+    if (lblAbsorberCount) lblAbsorberCount.textContent = TRANSLATIONS.lblAbsorberCount[l];
+    const lblFallFactorCalc = document.getElementById("lbl-fall-factor-calc");
+    if (lblFallFactorCalc) lblFallFactorCalc.textContent = TRANSLATIONS.lblFallFactorCalc[l];
+    const lblMaxAllowedSpanCalc = document.getElementById("lbl-max-allowed-span-calc");
+    if (lblMaxAllowedSpanCalc) lblMaxAllowedSpanCalc.textContent = TRANSLATIONS.lblMaxAllowedSpanCalc[l];
+
+    const sideTitleLifelineText = document.getElementById("side-title-lifeline-text");
+    if (sideTitleLifelineText) sideTitleLifelineText.textContent = TRANSLATIONS.sideTitleLifeline[l];
+
+    const lblTotalLineLenRow = document.getElementById("lbl-total-line-len-row");
+    if (lblTotalLineLenRow) lblTotalLineLenRow.textContent = TRANSLATIONS.lblTotalLineLenRow[l];
+    const lblSpanLRow = document.getElementById("lbl-span-l-row");
+    if (lblSpanLRow) lblSpanLRow.textContent = TRANSLATIONS.lblSpanLRow[l];
+    const lblForceLRow = document.getElementById("lbl-force-l-row");
+    if (lblForceLRow) lblForceLRow.textContent = TRANSLATIONS.lblForceLRow[l];
+    const lblDeflLRow = document.getElementById("lbl-defl-l-row");
+    if (lblDeflLRow) lblDeflLRow.textContent = TRANSLATIONS.lblDeflLRow[l];
+    const lblExt1LRow = document.getElementById("lbl-ext1-l-row");
+    if (lblExt1LRow) lblExt1LRow.textContent = TRANSLATIONS.lblExt1LRow[l];
+    const lblExt2LRow = document.getElementById("lbl-ext2-l-row");
+    if (lblExt2LRow) lblExt2LRow.textContent = TRANSLATIONS.lblExt2LRow[l];
+    const lblExt3LRow = document.getElementById("lbl-ext3-l-row");
+    if (lblExt3LRow) lblExt3LRow.textContent = TRANSLATIONS.lblExt3LRow[l];
+    const lblExt4LRow = document.getElementById("lbl-ext4-l-row");
+    if (lblExt4LRow) lblExt4LRow.textContent = TRANSLATIONS.lblExt4LRow[l];
+
+    const btnTextExport = document.getElementById("btn-text-export");
+    if (btnTextExport) btnTextExport.textContent = TRANSLATIONS.btnTextExport[l];
+
+    const carouselTitle = document.getElementById("carousel-title");
+    if (carouselTitle) carouselTitle.textContent = TRANSLATIONS.carouselTitle[l];
+
+    renderComponentsChecklist();
+    if (typeof update3DScene === "function" && state.product) {
+        update3DScene();
+    }
+}
+
 // Real 3D Component Models Database & Exploded Views
 // Real 3D Component Models Database & Exploded Views
 const COMPONENTS_DB = {
     "NEW PRO": [
         { id: "New_Pro", name: "NEW PRO ABSORBER", file: "models/new_pro/New_Pro.glb", checked: false, exploded: ["models/new_pro/New_Pro_exploded1.png", "models/new_pro/New_Pro_exploded2.png", "models/new_pro/New_Pro_exploded3.png"] },
         { id: "X-Matrix", name: "X-MATRIX JONCTION MULTIDIRECTIONNELLE", file: "models/new_pro/X-Matrix.glb", checked: false, exploded: ["models/new_pro/X-Matrix_exploded1.png", "models/new_pro/X-Matrix_exploded2.png", "models/new_pro/X-Matrix_exploded3.png"] },
-        { id: "Mini_Omega", name: "MINI OMEGA", file: "models/new_pro/Mini_Omega.glb", checked: false, exploded: ["models/new_pro/Mini_Omega_exploded1.png", "models/new_pro/Mini_Omega_exploded2.png", "models/new_pro/Mini_Omega_exploded3.png"] },
-        { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/new_pro/P_Inox_Rigide.glb", checked: false, exploded: ["models/new_pro/P_Inox_Rigide_exploded1.png", "models/new_pro/P_Inox_Rigide_exploded2.png", "models/new_pro/P_Inox_Rigide_exploded3.png"] },
+        { id: "Mini_Omega", name: "MINI OMEGA (avec NEW PRO)", file: "models/new_pro/Mini_Omega.glb", checked: false, exploded: ["models/new_pro/Mini_Omega_exploded1.png", "models/new_pro/Mini_Omega_exploded2.png", "models/new_pro/Mini_Omega_exploded3.png"] },
+        { id: "P_Inox", name: "POTELET INOX RIGIDE (avec NEW PRO)", file: "models/new_pro/P_Inox_Rigide.glb", checked: false, exploded: ["models/new_pro/P_Inox_Rigide_exploded1.png", "models/new_pro/P_Inox_Rigide_exploded2.png", "models/new_pro/P_Inox_Rigide_exploded3.png"] },
         { id: "X-Cone", name: "X-CONE", file: "models/new_pro/X-Cone.glb", checked: false, exploded: ["models/new_pro/X-Cone_exploded1.png", "models/new_pro/X-Cone_exploded3.png"] }
     ],
     "LIGHT PRO": [
         { id: "LightPro", name: "LIGHT PRO ABSORBER", file: "models/light_pro/LightPro.glb", checked: false, exploded: ["models/light_pro/LightPro_exploded1.png", "models/light_pro/LightPro_exploded2.png", "models/light_pro/LightPro_exploded3.png"] },
-        { id: "PB_HOOKt", name: "POTELET PB HOOKT", file: "models/light_pro/PB_HOOKT.glb", checked: false, exploded: ["models/light_pro/PB_HOOKT_exploded1.png", "models/light_pro/PB_HOOKT_exploded2.png", "models/light_pro/PB_HOOKT_exploded3.png"] },
-        { id: "P_Galva", name: "POTELET GALVA RIGIDE", file: "models/light_pro/P_Galva_Rigide.glb", checked: false, exploded: ["models/light_pro/P_Galva_Rigide_exploded1.png", "models/light_pro/P_Galva_Rigide_exploded2.png", "models/light_pro/P_Galva_Rigide_exploded3.png"] },
-        { id: "P_Inox", name: "POTELET INOX RIGIDE", file: "models/light_pro/P_Inox_Rigide.glb", checked: false, exploded: ["models/light_pro/P_Inox_Rigide_exploded1.png", "models/light_pro/P_Inox_Rigide_exploded2.png", "models/light_pro/P_Inox_Rigide_exploded3.png"] }
+        { id: "PB_HOOKt", name: "POTELET PB HOOKT (avec LIGHT PRO)", file: "models/light_pro/PB_HOOKT.glb", checked: false, exploded: ["models/light_pro/PB_HOOKT_exploded1.png", "models/light_pro/PB_HOOKT_exploded2.png", "models/light_pro/PB_HOOKT_exploded3.png"] },
+        { id: "P_Galva", name: "POTELET GALVA RIGIDE (avec LIGHT PRO)", file: "models/light_pro/P_Galva_Rigide.glb", checked: false, exploded: ["models/light_pro/P_Galva_Rigide_exploded1.png", "models/light_pro/P_Galva_Rigide_exploded2.png", "models/light_pro/P_Galva_Rigide_exploded3.png"] },
+        { id: "P_Inox", name: "POTELET INOX RIGIDE (avec LIGHT PRO)", file: "models/light_pro/P_Inox_Rigide.glb", checked: false, exploded: ["models/light_pro/P_Inox_Rigide_exploded1.png", "models/light_pro/P_Inox_Rigide_exploded2.png", "models/light_pro/P_Inox_Rigide_exploded3.png"] }
     ],
     "LONG RANGE": [
         { id: "LongRange", name: "LONG RANGE HEAVY ABSORBER", file: "models/long_range/LongRange.glb", checked: false, exploded: ["models/long_range/LongRange_exploded1.png", "models/long_range/LongRange_exploded2.png", "models/long_range/LongRange_exploded3.png"] },
@@ -125,10 +643,10 @@ const newProPredictRecords = [
     { configId: "GP5", zone: "Grande portée", portee: 15, direction: "omega", ancrage: "ocho+", users: 1, fmax_ancre: 4.4, force_ext1: 12.2, force_ext2: 12.2, fleche: 1290, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP9", zone: "Grande portée", portee: 15, direction: "omega_mini", ancrage: "ocho+", users: 1, fmax_ancre: 4.7, force_ext1: 12.9, force_ext2: 12.5, fleche: 1410, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP10", zone: "Grande portée", portee: 15, direction: "overhead", ancrage: "ocho+", users: 1, fmax_ancre: 4.4, force_ext1: 10.8, force_ext2: 10.4, fleche: 1640, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP1", zone: "Grande portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 1, fmax_ancre: 6.4, force_ext1: 9.7, force_ext2: 9.6, fleche: 490, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP5", zone: "Grande portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 1, fmax_ancre: 5.0, force_ext1: 7.1, force_ext2: 7.2, fleche: 495, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP9", zone: "Grande portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 1, fmax_ancre: 5.7, force_ext1: 10.1, force_ext2: 10.0, fleche: 450, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP10", zone: "Grande portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 1, fmax_ancre: 7.2, force_ext1: 11.3, force_ext2: 11.1, fleche: 485, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP1", zone: "Petite portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 1, fmax_ancre: 6.4, force_ext1: 9.7, force_ext2: 9.6, fleche: 490, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP5", zone: "Petite portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 1, fmax_ancre: 5.0, force_ext1: 7.1, force_ext2: 7.2, fleche: 495, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP9", zone: "Petite portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 1, fmax_ancre: 5.7, force_ext1: 10.1, force_ext2: 10.0, fleche: 450, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP10", zone: "Petite portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 1, fmax_ancre: 7.2, force_ext1: 11.3, force_ext2: 11.1, fleche: 485, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP1", zone: "Grande portée", portee: 15, direction: "sol_mur", ancrage: "ocho+", users: 2, fmax_ancre: 6.15, force_ext1: 13.9, force_ext2: 13.85, fleche: 1700, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP1", zone: "Grande portée", portee: 15, direction: "sol_mur", ancrage: "ocho+", users: 3, fmax_ancre: 7.2, force_ext1: 13.9, force_ext2: 14.0, fleche: 2105, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP1", zone: "Grande portée", portee: 15, direction: "sol_mur", ancrage: "ocho+", users: 4, fmax_ancre: 7.6, force_ext1: 14.7, force_ext2: 14.7, fleche: 2105, supportType: "Rigide", fallFactor: 2.0 },
@@ -145,22 +663,22 @@ const newProPredictRecords = [
     { configId: "GP10", zone: "Grande portée", portee: 15, direction: "overhead", ancrage: "ocho+", users: 3, fmax_ancre: 7.2, force_ext1: 14.8, force_ext2: 14.8, fleche: 1850, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP10", zone: "Grande portée", portee: 15, direction: "overhead", ancrage: "ocho+", users: 4, fmax_ancre: 7.2, force_ext1: 14.8, force_ext2: 14.8, fleche: 1860, supportType: "Rigide", fallFactor: 2.0 },
     { configId: "GP10", zone: "Grande portée", portee: 15, direction: "overhead", ancrage: "ocho+", users: 5, fmax_ancre: 8.0, force_ext1: 16.2, force_ext2: 16.2, fleche: 1860, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP1", zone: "Grande portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 2, fmax_ancre: 7.95, force_ext1: 11.0, force_ext2: 11.0, fleche: 532, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP1", zone: "Grande portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 3, fmax_ancre: 9.5, force_ext1: 12.3, force_ext2: 12.4, fleche: 575, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP1", zone: "Grande portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 4, fmax_ancre: 9.9, force_ext1: 13.1, force_ext2: 13.2, fleche: 585, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP1", zone: "Grande portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 5, fmax_ancre: 9.8, force_ext1: 12.6, force_ext2: 12.7, fleche: 610, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP5", zone: "Grande portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 2, fmax_ancre: 6.65, force_ext1: 8.85, force_ext2: 8.75, fleche: 527, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP5", zone: "Grande portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 3, fmax_ancre: 8.3, force_ext1: 10.6, force_ext2: 10.3, fleche: 560, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP5", zone: "Grande portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 4, fmax_ancre: 8.5, force_ext1: 10.5, force_ext2: 10.2, fleche: 560, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP5", zone: "Grande portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 5, fmax_ancre: 8.8, force_ext1: 10.6, force_ext2: 10.4, fleche: 560, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP9", zone: "Grande portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 2, fmax_ancre: 7.2, force_ext1: 11.3, force_ext2: 11.35, fleche: 502, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP9", zone: "Grande portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 3, fmax_ancre: 8.7, force_ext1: 12.5, force_ext2: 12.7, fleche: 555, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP9", zone: "Grande portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 4, fmax_ancre: 8.9, force_ext1: 11.5, force_ext2: 12.0, fleche: 585, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP9", zone: "Grande portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 5, fmax_ancre: 9.1, force_ext1: 11.8, force_ext2: 11.8, fleche: 625, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP10", zone: "Grande portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 2, fmax_ancre: 8.55, force_ext1: 13.35, force_ext2: 13.25, fleche: 495, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP10", zone: "Grande portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 3, fmax_ancre: 9.9, force_ext1: 15.4, force_ext2: 15.4, fleche: 505, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP10", zone: "Grande portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 4, fmax_ancre: 10.2, force_ext1: 15.4, force_ext2: 15.4, fleche: 505, supportType: "Rigide", fallFactor: 2.0 },
-    { configId: "PP10", zone: "Grande portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 5, fmax_ancre: 10.3, force_ext1: 15.4, force_ext2: 15.5, fleche: 505, supportType: "Rigide", fallFactor: 2.0 }
+    { configId: "PP1", zone: "Petite portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 2, fmax_ancre: 7.95, force_ext1: 11.0, force_ext2: 11.0, fleche: 532, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP1", zone: "Petite portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 3, fmax_ancre: 9.5, force_ext1: 12.3, force_ext2: 12.4, fleche: 575, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP1", zone: "Petite portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 4, fmax_ancre: 9.9, force_ext1: 13.1, force_ext2: 13.2, fleche: 585, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP1", zone: "Petite portée", portee: 3, direction: "sol_mur", ancrage: "ocho+", users: 5, fmax_ancre: 9.8, force_ext1: 12.6, force_ext2: 12.7, fleche: 610, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP5", zone: "Petite portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 2, fmax_ancre: 6.65, force_ext1: 8.85, force_ext2: 8.75, fleche: 527, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP5", zone: "Petite portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 3, fmax_ancre: 8.3, force_ext1: 10.6, force_ext2: 10.3, fleche: 560, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP5", zone: "Petite portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 4, fmax_ancre: 8.5, force_ext1: 10.5, force_ext2: 10.2, fleche: 560, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP5", zone: "Petite portée", portee: 3, direction: "omega", ancrage: "ocho+", users: 5, fmax_ancre: 8.8, force_ext1: 10.6, force_ext2: 10.4, fleche: 560, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP9", zone: "Petite portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 2, fmax_ancre: 7.2, force_ext1: 11.3, force_ext2: 11.35, fleche: 502, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP9", zone: "Petite portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 3, fmax_ancre: 8.7, force_ext1: 12.5, force_ext2: 12.7, fleche: 555, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP9", zone: "Petite portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 4, fmax_ancre: 8.9, force_ext1: 11.5, force_ext2: 12.0, fleche: 585, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP9", zone: "Petite portée", portee: 3, direction: "omega_mini", ancrage: "ocho+", users: 5, fmax_ancre: 9.1, force_ext1: 11.8, force_ext2: 11.8, fleche: 625, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP10", zone: "Petite portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 2, fmax_ancre: 8.55, force_ext1: 13.35, force_ext2: 13.25, fleche: 495, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP10", zone: "Petite portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 3, fmax_ancre: 9.9, force_ext1: 15.4, force_ext2: 15.4, fleche: 505, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP10", zone: "Petite portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 4, fmax_ancre: 10.2, force_ext1: 15.4, force_ext2: 15.4, fleche: 505, supportType: "Rigide", fallFactor: 2.0 },
+    { configId: "PP10", zone: "Petite portée", portee: 3, direction: "overhead", ancrage: "ocho+", users: 5, fmax_ancre: 10.3, force_ext1: 15.4, force_ext2: 15.5, fleche: 505, supportType: "Rigide", fallFactor: 2.0 }
 ];
 
 const longRangePredictRecords = [
@@ -196,9 +714,9 @@ function getBaselineFmax(system, users, portee, supportType) {
             return 8.3;
         } else {
             if (users === 1) return 6.4 + t * (6.3 - 6.4);
-            if (users === 2) return 5.75 + t * (5.7 - 5.75);
-            if (users === 3) return 5.1;
-            return 4.7;
+            if (users === 2) return 7.2 + t * (7.1 - 7.2);
+            if (users === 3) return 8.0 + t * (7.9 - 8.0);
+            return 8.0;
         }
     }
     if (system === "LONG RANGE" || system === "LongRange") {
@@ -223,42 +741,58 @@ function getBaselineFmax(system, users, portee, supportType) {
     return 6.0;
 }
 
-function getActiveSupport() {
+function getActiveSupportType() {
     if (typeof state === 'undefined') return "omega_mini";
+    if (state.product === "LONG RANGE" && (state.mountingType === "overhead" || state.roofShape === "flat_overhead")) return "overhead";
     const list = (typeof COMPONENTS_DB !== 'undefined' ? COMPONENTS_DB[state.product] : []) || [];
     const checked = list.find(c => c.checked);
     if (checked) {
         const id = checked.id.toLowerCase();
+        if (id.includes("poteau_haut") || id.includes("overhead")) return "overhead";
         if (id.includes("mini")) return "omega_mini";
         if (id.includes("pb_hookt") || id.includes("hookt")) return "hookt";
         if (id.includes("galva")) return "pb250";
         if (id.includes("omega")) return "omega";
-        if (id.includes("overhead")) return "overhead";
     }
     return state.mountingType || "omega_mini";
 }
 
 function getActivePostName() {
     if (typeof state === 'undefined') return "MINI OMEGA";
+    const l = state.lang || 0;
+    if (state.product === "LONG RANGE") {
+        return ["ANCRAGE A-FIX", "A-FIX ANCHOR", "ANCLAJE A-FIX"][l];
+    }
     const list = (typeof COMPONENTS_DB !== 'undefined' ? COMPONENTS_DB[state.product] : []) || [];
     const postComp = list.find(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.id !== "New_Pro" && c.id !== "LightPro" && c.id !== "LongRange" && c.checked);
-    if (postComp) return postComp.name;
-    if (state.product === "NEW PRO") return "MINI OMEGA";
-    if (state.product === "LIGHT PRO") return "Potelet Basculant";
-    if (state.product === "LONG RANGE") return "A-FIX";
-    return "Potelet / Ancrage";
+    if (postComp) return getComponentName(postComp);
+    if (state.product === "NEW PRO") return getComponentName({ id: "Mini_Omega", name: "MINI OMEGA" });
+    if (state.product === "LIGHT PRO") return ["Potelet Basculant", "Tilting Post", "Poste Basculante"][l];
+    return ["Potelet / Ancrage", "Post / Anchor", "Poste / Anclaje"][l];
 }
 
 const Calculator = {
+    getXConeSpacing: function () {
+        if (state.roofShape !== "sloped") return 0;
+        const slope = state.roofSlope || 0;
+        if (slope >= 40 && slope <= 75) return 0.3;
+        if (slope >= 30 && slope < 40) return 0.5;
+        if (slope >= 15 && slope < 30) return 1.0;
+        return 0;
+    },
+
     getMaxSpan: function (product) {
         if (product === "LONG RANGE" || product === "LongRange") return 56.0;
+        if (state.roofShape === "sloped" && state.roofSlope >= 40 && state.roofSlope <= 75) {
+            return 3.0;
+        }
         return 15.0;
     },
 
     calculateAnchorPositions: function (L, l, maxSpan) {
         const lineLenTotal = state.lineLength;
         const marginPerEnd = (state.product === "LONG RANGE") ? 0.30 : 0.20;
-        const lineLen = Math.max(0.5, lineLenTotal - 2 * marginPerEnd);
+        const lineLen = Math.max(0.5, lineLenTotal);
 
         // On sloped mono-pitch roof, Line 1 runs along Z (slope direction)
         if (state.roofShape === "sloped") {
@@ -269,7 +803,7 @@ const Calculator = {
             state.L = state.hasLine2 ? Math.max(12.0, state.line2Length + 6.0) : 12.0;
 
             const startZ = 3.0 + marginPerEnd * Math.cos(slopeRad);
-            const xPos = 3.0;
+            const xPos = state.hasLine2 ? (state.L - state.line2Length) / 2 : state.L / 2;
             const line1Nodes = [];
             const intCount1 = Math.max(1, Math.ceil(lineLen / maxSpan));
             const step1Ground = line1LenGround / intCount1;
@@ -291,7 +825,7 @@ const Calculator = {
                 const line2Nodes = [];
                 const endZ = startZ + line1LenGround;
                 const line2LenTotal = state.line2Length;
-                const line2Len = Math.max(0.5, line2LenTotal - marginPerEnd);
+                const line2Len = Math.max(0.5, line2LenTotal);
                 const intCount2 = Math.max(1, Math.ceil(line2Len / maxSpan));
                 const step2 = line2Len / intCount2;
 
@@ -333,7 +867,7 @@ const Calculator = {
         }
 
         const startX = 3.0 + marginPerEnd;
-        const zPos = (state.roofShape === "triangle") ? state.l / 2 : 3.0;
+        const zPos = state.hasLine2 ? (state.l - state.line2Length) / 2 : state.l / 2;
 
         // Handle X-Matrix junction location on Line 1 with 3m anchors on either side
         const isXMatrixChecked = (COMPONENTS_DB[state.product] || []).some(c => c.id === "X-Matrix" && c.checked);
@@ -388,7 +922,7 @@ const Calculator = {
                     line2Nodes.push(cornerPost2);
 
                     const line2LenTotal = state.line2Length;
-                    const line2Len = Math.max(0.5, line2LenTotal - marginPerEnd);
+                    const line2Len = Math.max(0.5, line2LenTotal);
                     const line2LenActual = line2Len - cornerR;
                     if (line2LenActual <= 0) {
                         line2Nodes[0].type = "extremite";
@@ -404,6 +938,7 @@ const Calculator = {
                                 y: 0.0,
                                 z: parseFloat(z2.toFixed(2)),
                                 type: type2,
+                                rotY: (3 * Math.PI) / 2,
                                 line: 2
                             });
                         }
@@ -459,13 +994,13 @@ const Calculator = {
 
                 if (state.hasLine2) {
                     const line2LenTotal = state.line2Length;
-                    const line2Len = Math.max(0.5, line2LenTotal - marginPerEnd);
+                    const line2Len = Math.max(0.5, line2LenTotal);
                     const line2Nodes = [];
 
                     if (line2Len <= 3.0) {
-                        line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat((jNode.z + line2Len).toFixed(2)), type: "extremite", line: 2 });
+                        line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat((jNode.z + line2Len).toFixed(2)), type: "extremite", rotY: (3 * Math.PI) / 2, line: 2 });
                     } else {
-                        line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat((jNode.z + 3.0).toFixed(2)), type: "intermediaire", line: 2 });
+                        line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat((jNode.z + 3.0).toFixed(2)), type: "intermediaire", rotY: (3 * Math.PI) / 2, line: 2 });
                         const remLen = line2Len - 3.0;
                         const intCountL2 = Math.max(1, Math.ceil(remLen / maxSpan));
                         const stepL2 = remLen / intCountL2;
@@ -473,7 +1008,7 @@ const Calculator = {
                         for (let j = 1; j <= intCountL2; j++) {
                             const z2 = jNode.z + 3.0 + j * stepL2;
                             const type2 = (j === intCountL2) ? "extremite" : "intermediaire";
-                            line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat(z2.toFixed(2)), type: type2, line: 2 });
+                            line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat(z2.toFixed(2)), type: type2, rotY: (3 * Math.PI) / 2, line: 2 });
                         }
                     }
 
@@ -486,9 +1021,16 @@ const Calculator = {
                 }
             }
         } else {
-            // Standard line 1 layout
+            // Standard line 1 layout (Multi-span allowed strictly for NEW PRO and LIGHT PRO on OSHA)
             const endX = startX + lineLen;
-            const intCount1 = Math.max(1, Math.ceil(lineLen / maxSpan));
+            const isOSHA = (state.norm === "OSHA/ANSI" || state.norm === "OSHA" || state.norm === "ANSI");
+            const isMultiSpanAllowed = isOSHA && (state.product === "NEW PRO" || state.product === "LIGHT PRO" || state.product === "LightPro");
+            let intCount1 = 1;
+            if (state.product === "LONG RANGE" || state.product === "LongRange") {
+                intCount1 = 1; // Long Range strictly uses 2 anchors (0 intermediate anchors) under all standards
+            } else {
+                intCount1 = (lineLen < 12.0) ? 1 : Math.max(1, Math.ceil(lineLen / maxSpan));
+            }
             const step1 = lineLen / intCount1;
 
             for (let i = 0; i <= intCount1; i++) {
@@ -610,6 +1152,10 @@ const Calculator = {
                 else if (support === "overhead") k_support = 7.2 / 5.7;
                 return F_user * (5.7 / 11.5) * k_support * k_FC * (1.0 + 0.15 * spanRatio);
             }
+            if (product === "LIGHT PRO" && span <= 3.5) {
+                const fmax_base = u === 1 ? 5.0 : (u === 2 ? 5.8 : 6.5);
+                return fmax_base * k_FC;
+            }
             return F_user * k_FC;
         }
 
@@ -644,6 +1190,9 @@ const Calculator = {
                 let k_support = support === "omega" ? 1290 / 1410 : (support === "sol_mur" ? 1300 / 1410 : (support === "overhead" ? 1640 / 1410 : 1.0));
                 return (isMultiSpan ? 1530.0 : 2200.0) * spanRatio * (F_user / 11.5) * k_support * k_FC;
             } else if (product === "LIGHT PRO") {
+                if (span <= 3.5) {
+                    return Math.round(675.0 * k_FC);
+                }
                 const spanRatio = Math.max(2.0, Math.min(12.2, span)) / 12.2;
                 let f_ref = support === "hookt" ? (isMultiSpan ? 2250.0 : 2600.0) : (isMultiSpan ? 1500.0 : 1800.0);
                 return f_ref * spanRatio * (F_user / 8.8) * k_FC;
@@ -698,6 +1247,10 @@ const Calculator = {
             const F_user = 1.37 * u + 4.65;
             if (product === "NEW PRO") return (isMultiSpan ? 13.05 : 12.50) * (F_user / 11.5) * k_FC;
             if (product === "LIGHT PRO") {
+                if (span <= 3.5) {
+                    const lc1_base = u === 1 ? 5.4 : (u === 2 ? 6.1 : 6.8);
+                    return lc1_base * k_FC;
+                }
                 const spanRatio = 1.0 + (support === "hookt" ? 0.10 : 0.12) * ((12.2 - Math.max(2.0, Math.min(12.2, span))) / (12.2 - 2.0));
                 let fext1_ref = support === "hookt" ? (isMultiSpan ? 8.30 : 9.00) : (isMultiSpan ? 13.65 : 11.60);
                 return fext1_ref * (F_user / 8.8) * spanRatio * k_FC;
@@ -746,6 +1299,10 @@ const Calculator = {
             const F_user = 1.37 * u + 4.65;
             if (product === "NEW PRO") return (isMultiSpan ? 12.55 : 12.05) * (F_user / 11.5) * k_FC;
             if (product === "LIGHT PRO") {
+                if (span <= 3.5) {
+                    const lc2_base = u === 1 ? 5.8 : (u === 2 ? 6.5 : 7.2);
+                    return lc2_base * k_FC;
+                }
                 const spanRatio = 1.0 + (support === "hookt" ? 0.10 : 0.12) * ((12.2 - Math.max(2.0, Math.min(12.2, span))) / (12.2 - 2.0));
                 let fext2_ref = support === "hookt" ? (isMultiSpan ? 8.10 : 9.00) : (isMultiSpan ? 13.05 : 11.30);
                 return fext2_ref * (F_user / 8.8) * spanRatio * k_FC;
@@ -892,6 +1449,10 @@ function initThreeEngine() {
     renderer.domElement.addEventListener("pointerdown", onCanvasPointerDown);
 
     window.addEventListener("resize", onWindowResize);
+    if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(() => onWindowResize());
+        ro.observe(container);
+    }
 
     preloadActiveModels();
 
@@ -1013,12 +1574,12 @@ function highlightSelectedNode() {
         // Update component selection dropdown
         const compSelect = document.getElementById("node-comp-select");
         if (compSelect) {
-            compSelect.innerHTML = `<option value="">Standard Potelet</option>`;
+            compSelect.innerHTML = `<option value="">${["Standard Potelet", "Standard Post", "Poste Estándar"][state.lang || 0]}</option>`;
             const allComps = COMPONENTS_DB[state.product] || [];
             allComps.forEach(c => {
                 const opt = document.createElement("option");
                 opt.value = c.id;
-                opt.textContent = c.name;
+                opt.textContent = getComponentName(c);
                 if (node.compId === c.id) opt.selected = true;
                 compSelect.appendChild(opt);
             });
@@ -1040,7 +1601,7 @@ function updatePreviewCable() {
 
     const lastPt = state.customPoints[state.customPoints.length - 1];
     const lastRoofY = getRoofHeightAt(lastPt.x, lastPt.z);
-    
+
     const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
     let rotX = 0;
     if (state.roofShape === "sloped") {
@@ -1077,26 +1638,39 @@ function onWindowResize() {
     const container = document.getElementById("canvas3d");
     if (!container || !renderer) return;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const rect = container.getBoundingClientRect();
+    const width = rect.width || container.clientWidth || window.innerWidth;
+    const height = rect.height || container.clientHeight || (window.innerHeight - 64);
+    if (width <= 0 || height <= 0) return;
+
     const aspect = width / height;
 
-    perspectiveCam.aspect = aspect;
-    perspectiveCam.updateProjectionMatrix();
+    if (perspectiveCam) {
+        perspectiveCam.aspect = aspect;
+        perspectiveCam.updateProjectionMatrix();
+    }
 
-    const d = Math.max(state.L, state.l);
-    orthographicCam.left = -d * aspect;
-    orthographicCam.right = d * aspect;
-    orthographicCam.top = d;
-    orthographicCam.bottom = -d;
-    orthographicCam.updateProjectionMatrix();
+    if (orthographicCam) {
+        const d = Math.max(state.L || 21, state.l || 12);
+        orthographicCam.left = -d * aspect;
+        orthographicCam.right = d * aspect;
+        orthographicCam.top = d;
+        orthographicCam.bottom = -d;
+        orthographicCam.updateProjectionMatrix();
+    }
 
-    renderer.setSize(width, height);
+    renderer.setSize(width, height, false);
 }
+
+// Schedule smooth frame updates on window resize
+window.addEventListener("resize", () => {
+    onWindowResize();
+    requestAnimationFrame(() => onWindowResize());
+});
 
 function animate() {
     requestAnimationFrame(animate);
-    if (controls && state.viewMode === "3d") {
+    if (controls) {
         controls.update();
     }
     if (renderer && scene && activeCam) {
@@ -1128,7 +1702,7 @@ function prepareOBJModel(rawObj, rotY, modelFile = null) {
         emissiveIntensity: 0.15,
         side: THREE.DoubleSide
     });
-    
+
     clone.traverse(c => {
         if (c.isMesh) {
             c.material = mat;
@@ -1146,16 +1720,48 @@ function prepareOBJModel(rawObj, rotY, modelFile = null) {
     if (size.y > 10 || size.x > 10 || size.z > 10) {
         scaleFactor = 0.001;
     }
-    
+
     if (scaleFactor !== 1.0) {
         clone.scale.set(scaleFactor, scaleFactor, scaleFactor);
         box.setFromObject(clone);
         box.getSize(size);
     }
 
-    // Align bottom of object (box.min.y) flush at Y=0 and center X/Z
-    const center = box.getCenter(new THREE.Vector3());
-    clone.position.set(-center.x, -box.min.y, -center.z);
+    // Align top clamp head center (top 12% height) horizontally at X=0, Z=0 so cable passes 100% through matrix head on all models (including potelets)
+    clone.updateMatrixWorld(true);
+    let maxMeshY = -Infinity;
+    clone.traverse(c => {
+        if (c.isMesh) {
+            const cBox = new THREE.Box3().setFromObject(c);
+            if (cBox.max.y > maxMeshY) maxMeshY = cBox.max.y;
+        }
+    });
+
+    const topBox = new THREE.Box3();
+    const thresholdY = (maxMeshY !== -Infinity) ? Math.max(box.min.y + size.y * 0.5, maxMeshY - size.y * 0.12) : box.max.y - size.y * 0.12;
+
+    clone.traverse(c => {
+        if (c.isMesh) {
+            const cBox = new THREE.Box3().setFromObject(c);
+            if (cBox.max.y >= thresholdY) {
+                topBox.union(cBox);
+            }
+        }
+    });
+
+    const isLongRangeModel = modelFile && (modelFile.includes("LongRange") || modelFile.includes("long_range") || modelFile.includes("Long_Range"));
+
+    if (isLongRangeModel) {
+        // Position the flat bottom tab of the A-Fix bracket flush on top of post plate at Y = 0 (Y_offset = +0.0600)
+        // Center the A-Fix bracket foot tab dead-center over the post top plate (Z = +0.1482, X = 0)
+        clone.position.set(0, 0.0600, 0.1482);
+    } else if (modelFile && modelFile.includes("X-Cone")) {
+        const coneCenter = box.getCenter(new THREE.Vector3());
+        clone.position.set(-coneCenter.x, -coneCenter.y, -coneCenter.z);
+    } else {
+        const topCenter = topBox.isEmpty() ? box.getCenter(new THREE.Vector3()) : topBox.getCenter(new THREE.Vector3());
+        clone.position.set(-topCenter.x, -box.min.y, -topCenter.z);
+    }
 
     // Apply base Y-axis rotation offset for NEW PRO & LIGHT PRO models
     const isNewOrLightPro = modelFile ? (modelFile.includes("new_pro") || modelFile.includes("light_pro")) : (state.product === "NEW PRO" || state.product === "LIGHT PRO");
@@ -1163,7 +1769,7 @@ function prepareOBJModel(rawObj, rotY, modelFile = null) {
 
     // Additional Y-axis rotation offsets for specific models
     if (modelFile) {
-        if (modelFile.includes("Mini_Omega") || modelFile.includes("X-Cone") || (modelFile.includes("light_pro") && (modelFile.includes("P_Inox") || modelFile.includes("P_Galva")))) {
+        if (modelFile.includes("Mini_Omega") || modelFile.includes("X-Cone") || (modelFile.includes("light_pro") && (modelFile.includes("P_Inox") || modelFile.includes("P_Galva") || modelFile.includes("PB_HOOKT") || modelFile.includes("PB_HOOKt") || modelFile.includes("PB_")))) {
             angleOffset += Math.PI / 2;
         } else if (modelFile.includes("LongRange") || modelFile.includes("long_range") || modelFile.includes("Long_Range")) {
             angleOffset += Math.PI / 2;
@@ -1177,13 +1783,50 @@ function prepareOBJModel(rawObj, rotY, modelFile = null) {
     wrapper.add(rotGroup);
 
     // Save actual model height for precise cable attachment
-    wrapper.userData.height = (size.y > 0.05 && size.y < 3.0) ? size.y : 0.45;
+    if (isLongRangeModel) {
+        wrapper.userData.height = 0.096; // Cable eyelet alignment offset for Long Range (aligns cable 100% through maillon eyelet)
+    } else {
+        wrapper.userData.height = (size.y > 0.05 && size.y < 3.0) ? size.y : 0.45;
+    }
 
     return wrapper;
 }
 
+function createHighPostMesh() {
+    const group = new THREE.Group();
+    const postMat = new THREE.MeshStandardMaterial({
+        color: 0x334155,
+        metalness: 0.8,
+        roughness: 0.3
+    });
+    const plateMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.85,
+        roughness: 0.25
+    });
+
+    // Base plate (0.35m x 0.35m x 0.02m)
+    const basePlate = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.02, 0.35), plateMat);
+    basePlate.position.y = 0.01;
+    group.add(basePlate);
+
+    // High vertical tubular column (2.5m height)
+    const columnGeom = new THREE.CylinderGeometry(0.065, 0.065, 2.5, 16);
+    const column = new THREE.Mesh(columnGeom, postMat);
+    column.position.y = 1.27;
+    group.add(column);
+
+    // Top flange mounting plate
+    const topPlate = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.02, 0.25), plateMat);
+    topPlate.position.y = 2.53;
+    group.add(topPlate);
+
+    group.userData.height = 2.54;
+    return group;
+}
+
 // Real OBJ 3D Anchor Post Mesh Creator (Renders all checked models for a node position in 3D)
-function createAnchorMesh(colorHex, nodeType = "intermediaire", compId = null, rotY = 0) {
+function createAnchorMesh(colorHex, nodeType = "intermediaire", compId = null, rotY = 0, targetCableHeight = null) {
     const list = COMPONENTS_DB[state.product] || [];
     const mainGroup = new THREE.Group();
     const filesToRender = [];
@@ -1197,43 +1840,86 @@ function createAnchorMesh(colorHex, nodeType = "intermediaire", compId = null, r
     // 2. Otherwise check which components in COMPONENTS_DB are checked for active product
     if (filesToRender.length === 0) {
         if (nodeType === "x_matrix") {
+            const checkedPosts = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.id !== "New_Pro" && c.id !== "LightPro" && c.id !== "LongRange" && c.checked);
+            checkedPosts.forEach(c => filesToRender.push(c.file));
             const xmat = list.find(c => c.id === "X-Matrix" && c.checked);
             if (xmat) {
                 filesToRender.push(xmat.file);
-            } else {
-                const checkedComps = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.checked);
-                checkedComps.forEach(c => filesToRender.push(c.file));
+            } else if (checkedPosts.length === 0) {
+                const defaultXmat = list.find(c => c.id === "X-Matrix");
+                if (defaultXmat) filesToRender.push(defaultXmat.file);
             }
         } else if (nodeType === "extremite") {
-            // Include checked absorbers (LongRange.glb contains both LongRange + A-Fix)
-            const checkedAbsorbers = list.filter(c => (c.id === "New_Pro" || c.id === "LightPro" || c.id === "LongRange") && c.checked);
-            const hasLongRangeAbsorber = checkedAbsorbers.some(a => a.id === "LongRange");
-            
-            checkedAbsorbers.forEach(a => filesToRender.push(a.file));
+            // For LONG RANGE, require BOTH Absorber (LongRange) AND Anchor (A-Fix) to be checked to render 3D model
+            if (state.product === "LONG RANGE") {
+                const lrAbsorber = list.find(c => c.id === "LongRange");
+                const afixAnchor = list.find(c => c.id === "A-Fix");
+                if (lrAbsorber && lrAbsorber.checked && afixAnchor && afixAnchor.checked) {
+                    filesToRender.push(lrAbsorber.file || "models/long_range/LongRange.glb");
+                }
+            } else {
+                // Include checked posts and absorbers for other products
+                let checkedAbsorbers = list.filter(c => (c.id === "New_Pro" || c.id === "LightPro") && c.checked);
+                let checkedPosts = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.id !== "New_Pro" && c.id !== "LightPro" && c.checked);
 
-            if (!hasLongRangeAbsorber) {
-                const checkedPosts = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.id !== "New_Pro" && c.id !== "LightPro" && c.id !== "LongRange" && c.checked);
                 checkedPosts.forEach(p => filesToRender.push(p.file));
+                checkedAbsorbers.forEach(a => filesToRender.push(a.file));
             }
         } else {
             // Intermediate node post
-            const checkedPosts = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.id !== "New_Pro" && c.id !== "LightPro" && c.id !== "LongRange" && c.checked);
-            if (checkedPosts.length > 0) {
-                checkedPosts.forEach(p => filesToRender.push(p.file));
+            if (state.product === "LONG RANGE") {
+                const lrAbsorber = list.find(c => c.id === "LongRange");
+                const afixAnchor = list.find(c => c.id === "A-Fix");
+                if (lrAbsorber && lrAbsorber.checked && afixAnchor && afixAnchor.checked) {
+                    filesToRender.push(lrAbsorber.file || "models/long_range/LongRange.glb");
+                }
             } else {
-                const anyPost = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.checked);
-                anyPost.forEach(p => filesToRender.push(p.file));
+                let checkedAbsorbers = list.filter(c => (c.id === "New_Pro" || c.id === "LightPro") && c.checked);
+                let checkedPosts = list.filter(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.id !== "New_Pro" && c.id !== "LightPro" && c.checked);
+
+                checkedPosts.forEach(p => filesToRender.push(p.file));
+                if (checkedPosts.length === 0) {
+                    checkedAbsorbers.forEach(a => filesToRender.push(a.file));
+                }
             }
         }
     }
 
-    let maxHeight = 0.05;
-    filesToRender.forEach(file => {
+    let currentBaseY = 0.0;
+    let totalHeight = 0.0;
+
+    const isOverheadMode = (state.product === "LONG RANGE") && (state.mountingType === "overhead" || state.roofShape === "flat_overhead");
+    const isPoteauHautChecked = (state.product === "LONG RANGE") && list.some(c => c.id === "Poteau_Haut" && c.checked);
+
+    if (isOverheadMode || isPoteauHautChecked) {
+        const highPostObj = createHighPostMesh();
+        mainGroup.add(highPostObj);
+        currentBaseY += highPostObj.userData.height;
+        totalHeight += highPostObj.userData.height;
+    }
+
+    // Filter and deduplicate valid GLB/OBJ files to render
+    const validFilesToRender = [...new Set(filesToRender.filter(f => f && typeof f === 'string'))];
+
+    // If no component is explicitly checked by user and not overhead, return empty or high post group
+    if (validFilesToRender.length === 0 && !isOverheadMode && !isPoteauHautChecked) {
+        mainGroup.userData.height = 0.15;
+        return mainGroup;
+    }
+
+    // Separate post base components from top matrix / junction components
+    const isTopComponent = (f) => f && typeof f === "string" && (f.includes("New_Pro.glb") || f.includes("LightPro.glb") || f.includes("LongRange.glb") || f.includes("X-Matrix.glb"));
+    const postFiles = validFilesToRender.filter(f => !isTopComponent(f));
+    const topFiles = validFilesToRender.filter(f => isTopComponent(f));
+
+    // Render post base components first at Y = 0
+    postFiles.forEach(file => {
         if (file && objCache[file]) {
             const modelObj = prepareOBJModel(objCache[file], rotY, file);
-            if (modelObj.userData && modelObj.userData.height) {
-                maxHeight = Math.max(maxHeight, modelObj.userData.height);
-            }
+            modelObj.position.y = currentBaseY;
+            const h = modelObj.userData.height || 0.30;
+            currentBaseY += h;
+            totalHeight += h;
             mainGroup.add(modelObj);
         } else if (file) {
             loadOBJModel(file).then(() => {
@@ -1242,7 +1928,35 @@ function createAnchorMesh(colorHex, nodeType = "intermediaire", compId = null, r
         }
     });
 
-    mainGroup.userData.height = maxHeight;
+    // If no post base components were rendered:
+    // Standalone absorbers (New_Pro, LightPro, LongRange) sit directly on the roof surface (Y = 0.0).
+    // Mid-span junction (X-Matrix) without a post base attaches at cable line height.
+    if (postFiles.length === 0 && topFiles.length > 0 && !isOverheadMode && !isPoteauHautChecked) {
+        const isMatrixOnly = topFiles.every(f => f.includes("X-Matrix.glb"));
+        if (isMatrixOnly) {
+            const defaultHeight = targetCableHeight || 0.45;
+            currentBaseY = Math.max(0.05, defaultHeight - 0.035);
+        } else {
+            currentBaseY = 0.0;
+        }
+    }
+
+    // Render top matrix/junction components (X-Matrix, New_Pro absorber, etc.) on top of post base (or at cable height)
+    topFiles.forEach(file => {
+        if (file && objCache[file]) {
+            const modelObj = prepareOBJModel(objCache[file], rotY, file);
+            modelObj.position.y = currentBaseY;
+            const h = modelObj.userData.height || 0.05;
+            totalHeight += h;
+            mainGroup.add(modelObj);
+        } else if (file) {
+            loadOBJModel(file).then(() => {
+                if (typeof update3DScene === "function") update3DScene();
+            });
+        }
+    });
+
+    mainGroup.userData.height = totalHeight > 0.05 ? totalHeight : 0.45;
     return mainGroup;
 }
 
@@ -1252,16 +1966,18 @@ function getRoofHeightAt(x, z) {
     if (state.roofShape === "sloped") {
         return Math.max(0, z * Math.tan(slopeRad));
     } else if (state.roofShape === "triangle") {
-        const ridgeW = 1.6;
+        const ridgeW = 0.6;
         const slopeZ = Math.max(0, (state.l - ridgeW) / 2);
-        const ridgeH = slopeZ * Math.tan(slopeRad);
+        const flatH = slopeZ * Math.tan(slopeRad);
+        const arcH = 0.05;
 
         if (z < slopeZ) {
             return Math.max(0, z * Math.tan(slopeRad));
         } else if (z > state.l - slopeZ) {
             return Math.max(0, (state.l - z) * Math.tan(slopeRad));
         } else {
-            return ridgeH; // Flat summit platform
+            const t = (z - slopeZ) / ridgeW;
+            return flatH + 4 * arcH * t * (1 - t);
         }
     }
     return 0.0;
@@ -1314,62 +2030,56 @@ function create3DRoofShape(L, l, roofMat) {
         const mesh = new THREE.Mesh(roofGeo, roofMat);
         mesh.rotation.x = -slopeRad;
         const midY = (l / 2) * Math.tan(slopeRad);
-        mesh.position.set(L / 2, midY - 0.1 * Math.cos(slopeRad), l / 2);
+        const posY = midY - 0.1 * Math.cos(slopeRad);
+        const posZ = (l / 2) + 0.1 * Math.sin(slopeRad);
+
+        mesh.position.set(L / 2, posY, posZ);
         mesh.receiveShadow = true;
         roofGroup.add(mesh);
 
         const edges = new THREE.EdgesGeometry(roofGeo);
         const line = new THREE.LineSegments(edges, edgeMat);
         line.rotation.x = -slopeRad;
-        line.position.set(L / 2, midY - 0.1 * Math.cos(slopeRad), l / 2);
+        line.position.set(L / 2, posY, posZ);
         roofGroup.add(line);
 
         return roofGroup;
     } else if (shape === "triangle") {
-        const ridgeW = 1.6;
+        const ridgeW = 0.6;
         const slopeZ = Math.max(0, (l - ridgeW) / 2);
-        const ridgeH = slopeZ * Math.tan(slopeRad);
-        const halfLen = slopeZ / Math.cos(slopeRad);
+        const flatH = slopeZ * Math.tan(slopeRad);
+        const arcH = 0.05;
+        const thick = 0.20;
 
-        // 1. Front slope (z=0 to z=slopeZ): Slopes UP to the flat summit
-        const slope1Geo = new THREE.BoxGeometry(L, 0.2, halfLen);
-        const slope1 = new THREE.Mesh(slope1Geo, roofMat);
-        slope1.rotation.x = -slopeRad;
-        slope1.position.set(L / 2, (ridgeH / 2) - 0.1 * Math.cos(slopeRad), slopeZ / 2);
-        slope1.receiveShadow = true;
-        roofGroup.add(slope1);
+        const roofShape2D = new THREE.Shape();
+        roofShape2D.moveTo(0, 0);
+        roofShape2D.lineTo(slopeZ, flatH);
+        roofShape2D.quadraticCurveTo(l / 2, flatH + 2 * arcH, l - slopeZ, flatH);
+        roofShape2D.lineTo(l, 0);
+        roofShape2D.lineTo(l, -thick);
+        roofShape2D.lineTo(l - slopeZ, flatH - thick);
+        roofShape2D.quadraticCurveTo(l / 2, flatH + 2 * arcH - thick, slopeZ, flatH - thick);
+        roofShape2D.lineTo(0, -thick);
+        roofShape2D.closePath();
 
-        const edges1 = new THREE.EdgesGeometry(slope1Geo);
-        const line1 = new THREE.LineSegments(edges1, edgeMat);
-        line1.rotation.x = -slopeRad;
-        line1.position.set(L / 2, (ridgeH / 2) - 0.1 * Math.cos(slopeRad), slopeZ / 2);
-        roofGroup.add(line1);
+        const extrudeSettings = {
+            steps: 1,
+            depth: L,
+            bevelEnabled: false,
+            curveSegments: 32
+        };
 
-        // 2. Flat Summit Platform (z=slopeZ to z=l-slopeZ): Flat horizontal top
-        const summitGeo = new THREE.BoxGeometry(L, 0.2, ridgeW);
-        const summitMesh = new THREE.Mesh(summitGeo, roofMat);
-        summitMesh.position.set(L / 2, ridgeH - 0.1, l / 2);
-        summitMesh.receiveShadow = true;
-        roofGroup.add(summitMesh);
+        const gabledGeo = new THREE.ExtrudeGeometry(roofShape2D, extrudeSettings);
+        gabledGeo.rotateY(-Math.PI / 2);
+        gabledGeo.translate(L, 0, 0);
 
-        const summitEdges = new THREE.EdgesGeometry(summitGeo);
-        const summitLine = new THREE.LineSegments(summitEdges, edgeMat);
-        summitLine.position.set(L / 2, ridgeH - 0.1, l / 2);
-        roofGroup.add(summitLine);
+        const gabledMesh = new THREE.Mesh(gabledGeo, roofMat);
+        gabledMesh.receiveShadow = true;
+        roofGroup.add(gabledMesh);
 
-        // 3. Back slope (z=l-slopeZ to z=l): Slopes DOWN from the flat summit
-        const slope2Geo = new THREE.BoxGeometry(L, 0.2, halfLen);
-        const slope2 = new THREE.Mesh(slope2Geo, roofMat);
-        slope2.rotation.x = slopeRad;
-        slope2.position.set(L / 2, (ridgeH / 2) - 0.1 * Math.cos(slopeRad), l - slopeZ / 2);
-        slope2.receiveShadow = true;
-        roofGroup.add(slope2);
-
-        const edges2 = new THREE.EdgesGeometry(slope2Geo);
-        const line2 = new THREE.LineSegments(edges2, edgeMat);
-        line2.rotation.x = slopeRad;
-        line2.position.set(L / 2, (ridgeH / 2) - 0.1 * Math.cos(slopeRad), l - slopeZ / 2);
-        roofGroup.add(line2);
+        const edges = new THREE.EdgesGeometry(gabledGeo, 20);
+        const edgeLine = new THREE.LineSegments(edges, edgeMat);
+        roofGroup.add(edgeLine);
 
         return roofGroup;
     }
@@ -1390,7 +2100,7 @@ function create3DRoofShape(L, l, roofMat) {
 }
 
 // 3D Procedural Cable End Loop Terminal with Crimped Sleeves (Manchons de sertissage)
-function createCableLoopTerminal(pos, dir, cableColorHex) {
+function createCableLoopTerminal(pos, dir, cableColorHex, isMatrixJunction = false) {
     const group = new THREE.Group();
     const compColor = cableColorHex || state.colors.cable || "#f8fafc";
     const matCable = new THREE.MeshStandardMaterial({
@@ -1410,55 +2120,103 @@ function createCableLoopTerminal(pos, dir, cableColorHex) {
 
     const sleeveLength = 0.08;
     const sleeveRadius = 0.015;
-    
-    // Main Crimp Sleeve Cylinder
-    const sleeveGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, sleeveLength, 16);
-    const sleeveMesh = new THREE.Mesh(sleeveGeo, matSleeve);
-    sleeveMesh.position.set(0, 0, sleeveLength / 2);
-    sleeveMesh.rotation.x = Math.PI / 2;
-    group.add(sleeveMesh);
-
-    // 3 Stamped Crimp Rings on sleeve
-    const numRings = 3;
-    for (let r = 1; r <= numRings; r++) {
-        const ringGeo = new THREE.TorusGeometry(sleeveRadius + 0.002, 0.0025, 10, 20);
-        const ringMesh = new THREE.Mesh(ringGeo, matSleeve);
-        const ringZ = (r * sleeveLength) / (numRings + 1);
-        ringMesh.position.set(0, 0, ringZ);
-        group.add(ringMesh);
-    }
-
-    // Two parallel cable strands inside/entering the sleeve
     const cableR = 0.0075;
     const offset = 0.0065;
-    const cGeo = new THREE.CylinderGeometry(cableR, cableR, sleeveLength, 10);
-    const c1 = new THREE.Mesh(cGeo, matCable);
-    c1.position.set(-offset, 0, sleeveLength / 2);
-    c1.rotation.x = Math.PI / 2;
-    group.add(c1);
 
-    const c2 = new THREE.Mesh(cGeo, matCable);
-    c2.position.set(offset, 0, sleeveLength / 2);
-    c2.rotation.x = Math.PI / 2;
-    group.add(c2);
+    if (isMatrixJunction) {
+        // Crimp sleeve positioned outside the X-Matrix arm slot (from z = 0.025 to z = 0.105)
+        const sleeveZStart = 0.025;
+        const sleeveZCenter = sleeveZStart + sleeveLength / 2;
 
-    // Teardrop Cable Loop
-    const loopLength = 0.12;
-    const loopWidth = 0.032;
-    const pts = [
-        new THREE.Vector3(-offset, 0, sleeveLength),
-        new THREE.Vector3(-loopWidth, 0, sleeveLength + loopLength * 0.35),
-        new THREE.Vector3(-loopWidth * 0.7, 0, sleeveLength + loopLength * 0.85),
-        new THREE.Vector3(0, 0, sleeveLength + loopLength),
-        new THREE.Vector3(loopWidth * 0.7, 0, sleeveLength + loopLength * 0.85),
-        new THREE.Vector3(loopWidth, 0, sleeveLength + loopLength * 0.35),
-        new THREE.Vector3(offset, 0, sleeveLength)
-    ];
+        const sleeveGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, sleeveLength, 16);
+        const sleeveMesh = new THREE.Mesh(sleeveGeo, matSleeve);
+        sleeveMesh.position.set(0, 0, sleeveZCenter);
+        sleeveMesh.rotation.x = Math.PI / 2;
+        group.add(sleeveMesh);
 
-    const loopCurve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
-    const loopGeo = new THREE.TubeGeometry(loopCurve, 32, cableR, 10, false);
-    const loopMesh = new THREE.Mesh(loopGeo, matCable);
-    group.add(loopMesh);
+        // 3 Stamped Crimp Rings on sleeve
+        const numRings = 3;
+        for (let r = 1; r <= numRings; r++) {
+            const ringGeo = new THREE.TorusGeometry(sleeveRadius + 0.002, 0.0025, 10, 20);
+            const ringMesh = new THREE.Mesh(ringGeo, matSleeve);
+            const ringZ = sleeveZStart + (r * sleeveLength) / (numRings + 1);
+            ringMesh.position.set(0, 0, ringZ);
+            group.add(ringMesh);
+        }
+
+        // Two parallel cable strands inside sleeve
+        const cGeo = new THREE.CylinderGeometry(cableR, cableR, sleeveLength, 10);
+        const c1 = new THREE.Mesh(cGeo, matCable);
+        c1.position.set(-offset, 0, sleeveZCenter);
+        c1.rotation.x = Math.PI / 2;
+        group.add(c1);
+
+        const c2 = new THREE.Mesh(cGeo, matCable);
+        c2.position.set(offset, 0, sleeveZCenter);
+        c2.rotation.x = Math.PI / 2;
+        group.add(c2);
+
+        // Teardrop Cable Loop passing THROUGH the X-Matrix arm slot at z = 0
+        const loopWidth = 0.020;
+        const pts = [
+            new THREE.Vector3(-offset, 0, sleeveZStart),
+            new THREE.Vector3(-loopWidth, 0, 0.01),
+            new THREE.Vector3(-loopWidth * 0.8, 0, -0.025),
+            new THREE.Vector3(0, 0, -0.035),
+            new THREE.Vector3(loopWidth * 0.8, 0, -0.025),
+            new THREE.Vector3(loopWidth, 0, 0.01),
+            new THREE.Vector3(offset, 0, sleeveZStart)
+        ];
+
+        const loopCurve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+        const loopGeo = new THREE.TubeGeometry(loopCurve, 32, cableR, 10, false);
+        const loopMesh = new THREE.Mesh(loopGeo, matCable);
+        group.add(loopMesh);
+    } else {
+        // Standard extremity loop terminal
+        const sleeveGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, sleeveLength, 16);
+        const sleeveMesh = new THREE.Mesh(sleeveGeo, matSleeve);
+        sleeveMesh.position.set(0, 0, sleeveLength / 2);
+        sleeveMesh.rotation.x = Math.PI / 2;
+        group.add(sleeveMesh);
+
+        const numRings = 3;
+        for (let r = 1; r <= numRings; r++) {
+            const ringGeo = new THREE.TorusGeometry(sleeveRadius + 0.002, 0.0025, 10, 20);
+            const ringMesh = new THREE.Mesh(ringGeo, matSleeve);
+            const ringZ = (r * sleeveLength) / (numRings + 1);
+            ringMesh.position.set(0, 0, ringZ);
+            group.add(ringMesh);
+        }
+
+        const cGeo = new THREE.CylinderGeometry(cableR, cableR, sleeveLength, 10);
+        const c1 = new THREE.Mesh(cGeo, matCable);
+        c1.position.set(-offset, 0, sleeveLength / 2);
+        c1.rotation.x = Math.PI / 2;
+        group.add(c1);
+
+        const c2 = new THREE.Mesh(cGeo, matCable);
+        c2.position.set(offset, 0, sleeveLength / 2);
+        c2.rotation.x = Math.PI / 2;
+        group.add(c2);
+
+        const loopLength = 0.12;
+        const loopWidth = 0.032;
+        const pts = [
+            new THREE.Vector3(-offset, 0, sleeveLength),
+            new THREE.Vector3(-loopWidth, 0, sleeveLength + loopLength * 0.35),
+            new THREE.Vector3(-loopWidth * 0.7, 0, sleeveLength + loopLength * 0.85),
+            new THREE.Vector3(0, 0, sleeveLength + loopLength),
+            new THREE.Vector3(loopWidth * 0.7, 0, sleeveLength + loopLength * 0.85),
+            new THREE.Vector3(loopWidth, 0, sleeveLength + loopLength * 0.35),
+            new THREE.Vector3(offset, 0, sleeveLength)
+        ];
+
+        const loopCurve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+        const loopGeo = new THREE.TubeGeometry(loopCurve, 32, cableR, 10, false);
+        const loopMesh = new THREE.Mesh(loopGeo, matCable);
+        group.add(loopMesh);
+    }
 
     // Orient and position terminal group along dir
     group.position.copy(pos);
@@ -1490,7 +2248,7 @@ function createXMatrixStopperPin(pos, dir) {
 
     const pinRadius = 0.012;
     const pinHeight = 0.045;
-    
+
     // Main Stopper Cylinder (Butée)
     const pinGeo = new THREE.CylinderGeometry(pinRadius, pinRadius, pinHeight, 16);
     const pinMesh = new THREE.Mesh(pinGeo, matPin);
@@ -1563,13 +2321,19 @@ function update3DScene() {
     });
 
     roofMesh = create3DRoofShape(L, l, roofMat);
+    roofMesh.receiveShadow = true;
     scene.add(roofMesh);
 
     if (state.gridVisible) {
-        const gridDim = Math.max(L, l) * 1.5;
-        gridHelper = new THREE.GridHelper(gridDim, Math.round(gridDim), 0x475569, 0x94a3b8);
-        gridHelper.position.set(L / 2, -0.01, l / 2);
+        const gridDim = Math.max(L, l) + 12;
+        gridHelper = new THREE.GridHelper(gridDim, Math.round(gridDim), 0x3b82f6, 0x94a3b8);
+        gridHelper.position.set(L / 2, 0.001, l / 2);
         scene.add(gridHelper);
+    }
+
+    // Stop here if user has not yet chosen a HOOKT system
+    if (!state.product) {
+        return;
     }
 
     createSkylightsObstacles(L, l);
@@ -1579,19 +2343,10 @@ function update3DScene() {
 
     // Determine uniform cable post height across all nodes to ensure 100% level cable line touching anchor heads
     let activePostHeight = 0.45;
-    const activeList = COMPONENTS_DB[state.product] || [];
-    const activeComps = activeList;
-    const activePostComp = activeList.find(c => c.id !== "Contre_Plaque" && c.id !== "X-Cone" && c.id !== "Pack_Matrix" && c.id !== "X-Matrix" && c.checked);
-    if (activePostComp && objCache[activePostComp.file]) {
-        const dummy = prepareOBJModel(objCache[activePostComp.file], 0, activePostComp.file);
-        if (dummy && dummy.userData && dummy.userData.height) {
-            activePostHeight = dummy.userData.height;
-        }
-    } else {
-        const sampleAnchor = createAnchorMesh(state.colors.anchors, "intermediaire");
-        if (sampleAnchor && sampleAnchor.userData && sampleAnchor.userData.height > 0.05) {
-            activePostHeight = sampleAnchor.userData.height;
-        }
+    const activeComps = COMPONENTS_DB[state.product] || [];
+    const sampleAnchor = createAnchorMesh(state.colors.anchors, "intermediaire");
+    if (sampleAnchor && sampleAnchor.userData && sampleAnchor.userData.height > 0.05) {
+        activePostHeight = sampleAnchor.userData.height;
     }
 
     // Helper to process node lists
@@ -1616,52 +2371,49 @@ function update3DScene() {
             }
 
             const roofY = getRoofHeightAt(pos.x, pos.z);
-            const anchor = createAnchorMesh(state.colors.anchors, pos.type, pos.compId, rotY || 0);
+            const anchor = createAnchorMesh(state.colors.anchors, pos.type, pos.compId, rotY || 0, activePostHeight);
 
             const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
             let rotX = 0;
             if (state.roofShape === "sloped") {
                 rotX = -slopeRad;
             } else if (state.roofShape === "triangle") {
+                const ridgeW = 0.6;
                 const halfW = state.l / 2;
-                if (Math.abs(pos.z - halfW) < 0.05) {
+                if (Math.abs(pos.z - halfW) <= ridgeW / 2 + 0.1) {
                     rotX = 0;
                 } else {
                     rotX = (pos.z < halfW) ? -slopeRad : slopeRad;
                 }
             }
 
+            const roofLift = (state.roofShape === "sloped" || state.roofShape === "triangle") ? 0.02 : 0.0;
+
             anchor.rotation.x = rotX;
             anchor.rotation.z = 0;
-            if (pos.type === "x_matrix") {
-                // Position X-Matrix junction directly ON the cable line level
-                anchor.position.set(pos.x, pos.y + roofY + activePostHeight - 0.035, pos.z);
-            } else if (pos.type === "extremite" && anchor && anchor.userData && anchor.userData.height && anchor.userData.height < activePostHeight - 0.05) {
-                // Align extremity absorber top level flush with active post height to prevent cable dipping
-                anchor.position.set(pos.x, pos.y + roofY + (activePostHeight - anchor.userData.height), pos.z);
-            } else {
-                anchor.position.set(pos.x, pos.y + roofY, pos.z);
-            }
+            anchor.position.set(pos.x, pos.y + roofY + roofLift, pos.z);
             anchorGroup.add(anchor);
 
             const cpComp = activeComps.find(c => c.id === "Contre_Plaque" && c.checked);
             if (cpComp && objCache[cpComp.file]) {
                 const cpObj = prepareOBJModel(objCache[cpComp.file], rotY || 0, cpComp.file);
-                cpObj.position.set(pos.x, pos.y + roofY, pos.z);
+                cpObj.rotation.x = rotX;
+                cpObj.position.set(pos.x, pos.y + roofY + roofLift, pos.z);
                 anchorGroup.add(cpObj);
             }
 
             const packComp = activeComps.find(c => c.id === "Pack_Matrix" && c.checked);
             if (packComp && objCache[packComp.file]) {
                 const packObj = prepareOBJModel(objCache[packComp.file], rotY || 0, packComp.file);
-                packObj.position.set(pos.x, pos.y + roofY + 0.02, pos.z);
+                packObj.rotation.x = rotX;
+                packObj.position.set(pos.x, pos.y + roofY + roofLift + 0.02, pos.z);
                 anchorGroup.add(packObj);
             }
 
             // Uniform cable height passing 100% straight through top clamp head of posts
             const postH = Math.max(0.05, activePostHeight - 0.035);
 
-            const topY = pos.y + roofY + postH * Math.cos(rotX);
+            const topY = pos.y + roofY + roofLift + postH * Math.cos(rotX);
             const topZ = pos.z + postH * Math.sin(rotX);
 
             targetPtsArray.push(new THREE.Vector3(pos.x, topY, topZ));
@@ -1677,10 +2429,8 @@ function update3DScene() {
         if (!isChecked) return;
         if (!xconeComp || !objCache[xconeComp.file]) return;
 
-        let spacing = 1.0;
-        if (state.roofSlope > 30) {
-            spacing = 0.5;
-        }
+        const spacing = Calculator.getXConeSpacing();
+        if (spacing <= 0) return;
 
         for (let i = 0; i < ptsArray.length - 1; i++) {
             const pA = ptsArray[i];
@@ -1700,7 +2450,7 @@ function update3DScene() {
                 const coneObj = prepareOBJModel(objCache[xconeComp.file], 0, xconeComp.file);
                 coneObj.position.copy(posCone);
 
-                // Orient cone tip pointing DOWN the slope (-unitDir)
+                // Orient cone tip pointing DOWNWARDS along the cable slope (-unitDir)
                 const downDir = unitDir.clone().negate();
                 const rotMatrix = new THREE.Matrix4().lookAt(new THREE.Vector3(0, 0, 0), downDir, new THREE.Vector3(0, 1, 0));
                 coneObj.quaternion.setFromRotationMatrix(rotMatrix);
@@ -1847,17 +2597,7 @@ function update3DScene() {
 
     if (hasJunctionXMat && line1TopPts.length > 0) {
         if (state.xMatrixLocation === "end" && state.hasLine2 && line2TopPts.length > 0) {
-            // CORNER X-MATRIX JUNCTION
-            const jTopPt = line1TopPts[line1TopPts.length - 1];
-            const vDir1 = (line1TopPts.length > 1) ? line1TopPts[line1TopPts.length - 2].clone().sub(jTopPt).normalize() : new THREE.Vector3(-1, 0, 0);
-            const vDir2 = line2TopPts[0].clone().sub(jTopPt).normalize();
-            const vDir3 = vDir1.clone().negate();
-            const vDir4 = vDir2.clone().negate();
-
-            cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir1.clone().multiplyScalar(0.02)), vDir1, state.colors.cable));
-            cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir2.clone().multiplyScalar(0.02)), vDir2, state.colors.cable));
-            cableGroup.add(createXMatrixStopperPin(jTopPt, vDir3));
-            cableGroup.add(createXMatrixStopperPin(jTopPt, vDir4));
+            // CORNER JUNCTION: Continuous cable passes around corner without crimp terminals
         } else {
             // MIDPOINT X-MATRIX JUNCTION
             const jIndex = layout.line1.findIndex(n => n.type === "x_matrix");
@@ -1874,14 +2614,18 @@ function update3DScene() {
                 }
                 const vDir4 = vDir3.clone().negate();
 
-                // Arm 1 (Line 1 incoming): Cable Loop
-                cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir1.clone().multiplyScalar(0.02)), vDir1, state.colors.cable));
-                // Arm 2 (Line 1 outgoing): Cable Loop
-                cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir2.clone().multiplyScalar(0.02)), vDir2, state.colors.cable));
+                const posSlot1 = jTopPt.clone().add(vDir1.clone().multiplyScalar(0.055));
+                const posSlot2 = jTopPt.clone().add(vDir2.clone().multiplyScalar(0.055));
+                const posSlot3 = jTopPt.clone().add(vDir3.clone().multiplyScalar(0.055));
 
-                // Arm 3 (Line 2 branch side): Loop if line 2 present, else Stopper Pin (Butée)
+                // Arm 1 (Line 1 incoming): Cable Loop passing through slot 1
+                cableGroup.add(createCableLoopTerminal(posSlot1, vDir1, state.colors.cable, true));
+                // Arm 2 (Line 1 outgoing): Cable Loop passing through slot 2
+                cableGroup.add(createCableLoopTerminal(posSlot2, vDir2, state.colors.cable, true));
+
+                // Arm 3 (Line 2 branch side): Loop through slot 3 if line 2 present, else Stopper Pin (Butée)
                 if (state.hasLine2 && line2TopPts.length > 0) {
-                    cableGroup.add(createCableLoopTerminal(jTopPt.clone().add(vDir3.clone().multiplyScalar(0.02)), vDir3, state.colors.cable));
+                    cableGroup.add(createCableLoopTerminal(posSlot3, vDir3, state.colors.cable, true));
                 } else {
                     cableGroup.add(createXMatrixStopperPin(jTopPt, vDir3));
                 }
@@ -1899,30 +2643,125 @@ function update3DScene() {
     updateCalculationsUI(layout, maxSpan);
 }
 
+function getLocalizedRoofShapeName() {
+    const l = state.lang || 0;
+    const shape = state.roofShape;
+    const slope = state.roofSlope || 0;
+    if (shape === "flat") return ["Toit Plat", "Flat Roof", "Techo Plano"][l];
+    if (shape === "flat_overhead") return ["Toit Plat (Overhead)", "Flat Roof (Overhead)", "Techo Plano (Overhead)"][l];
+    if (shape === "sloped") return ["Toit Incliné", "Sloped Roof", "Techo Inclinado"][l] + ` (${slope}°)`;
+    if (shape === "triangle") return ["Toit Triangulaire", "Gabled Roof", "Techo Triangular"][l] + ` (${slope}°)`;
+    return ["Toit Plat", "Flat Roof", "Techo Plano"][l];
+}
+
+function formatLineMargin(marginCm) {
+    const l = state.lang || 0;
+    if (l === 1) return `(incl. 2×${marginCm}cm free at ends)`;
+    if (l === 2) return `(incl. 2×${marginCm}cm libres en ext.)`;
+    return `(dont 2×${marginCm}cm libres aux ext.)`;
+}
+
 // ==========================================
 // REAL-TIME UI READOUTS UPDATE
 // ==========================================
 function updateCalculationsUI(layout, maxSpan) {
+    const l = state.lang || 0;
+    if (!state.product) {
+        document.getElementById("val-fall-factor").textContent = state.fallFactor || 1;
+        document.getElementById("val-max-allowed-span").textContent = "-- m";
+        const lenElem = document.getElementById("val-total-line-len");
+        if (lenElem) lenElem.textContent = `${(state.lineLength || 15.0).toFixed(2)} m`;
+        document.getElementById("val-span-l").textContent = "-- m";
+        document.getElementById("val-force-l").textContent = "-- kN";
+        const deflElem = document.getElementById("val-defl-l");
+        if (deflElem) deflElem.textContent = "-- mm";
+        document.getElementById("val-ext1-l").textContent = "-- kN";
+        document.getElementById("val-ext2-l").textContent = "-- kN";
+        const lblAnchor = document.getElementById("lbl-anchor-count");
+        if (lblAnchor) lblAnchor.textContent = TRANSLATIONS.lblAnchorCount[l];
+        document.getElementById("val-anchor-count").textContent = "--";
+        const lblAbsorber = document.getElementById("lbl-absorber-count");
+        if (lblAbsorber) lblAbsorber.textContent = TRANSLATIONS.lblAbsorberCount[l];
+        document.getElementById("val-absorber-count").textContent = "--";
+        return;
+    }
+
     const positions = (layout && layout.all) ? layout.all : (Array.isArray(layout) ? layout : []);
     const anchorPosts = positions.filter(p => p.type !== "x_matrix");
     const totalAnchors = anchorPosts.length > 0 ? anchorPosts.length : positions.length;
     const totalLineLen = Calculator.calculateTotalLineLength(layout, state.product);
     const realSpanMax = Calculator.calculateMaxRealSpan(layout);
 
+    const warningElem = document.getElementById("canvas-warning");
+    const warningTextElem = document.getElementById("warning-text");
+    const isLongRange = (state.product === "LONG RANGE" || state.product === "LongRange");
+    const isLongRangeInvalid = isLongRange && (state.lineLength < 10.0 || state.lineLength > 56.0 || realSpanMax > 56.0);
+
+    if (isLongRangeInvalid) {
+        if (warningTextElem) warningTextElem.textContent = ["Vous devez choisir une longueur de ligne entre 10 et 56 m", "You must choose a line length between 10 and 56 m", "Debe elegir una longitud de línea entre 10 y 56 m"][l];
+        if (warningElem) warningElem.classList.remove("hidden");
+
+        const lblAnchor = document.getElementById("lbl-anchor-count");
+        if (lblAnchor) lblAnchor.textContent = `${TRANSLATIONS.lblAnchorCount[l]} (${getActivePostName()})`;
+        document.getElementById("val-anchor-count").textContent = "--";
+
+        const lblAbsorber = document.getElementById("lbl-absorber-count");
+        if (lblAbsorber) lblAbsorber.textContent = `${TRANSLATIONS.lblAbsorberCount[l]} (${state.product})`;
+        document.getElementById("val-absorber-count").textContent = "--";
+
+        document.getElementById("val-fall-factor").textContent = state.fallFactor;
+        document.getElementById("val-max-allowed-span").textContent = `${maxSpan.toFixed(1)}m`;
+
+        const lenElem = document.getElementById("val-total-line-len");
+        if (lenElem) lenElem.textContent = `${totalLineLen.toFixed(2)} m ${formatLineMargin(30)}`;
+
+        document.getElementById("val-span-l").textContent = "-- m";
+        document.getElementById("val-force-l").textContent = "-- kN";
+        const deflElem = document.getElementById("val-defl-l");
+        if (deflElem) deflElem.textContent = "-- mm";
+        document.getElementById("val-ext1-l").textContent = "-- kN";
+        document.getElementById("val-ext2-l").textContent = "-- kN";
+
+        const rowExt3 = document.getElementById("row-ext3");
+        const rowExt4 = document.getElementById("row-ext4");
+        if (rowExt3) rowExt3.style.display = "none";
+        if (rowExt4) rowExt4.style.display = "none";
+
+        const shapeName = getLocalizedRoofShapeName();
+        document.getElementById("header-dims-display").innerHTML = `<i class="fa-solid fa-ruler-combined"></i> ${shapeName} | L1: ${state.lineLength}m ${state.hasLine2 ? `+ L2: ${state.line2Length}m` : ""}`;
+        document.getElementById("header-system-display").textContent = state.product || ["Choisissez un système", "Choose a system", "Elija un sistema"][l];
+
+        return;
+    }
+
+    if (warningTextElem) warningTextElem.textContent = TRANSLATIONS.warningText[l];
+
     const isOSHA = (state.norm === "OSHA/ANSI" || state.norm === "OSHA" || state.norm === "ANSI");
+    const isMultiSpanAllowed = isOSHA && (state.product === "NEW PRO" || state.product === "LIGHT PRO" || state.product === "LightPro");
+
     const oshaSubtabs = document.getElementById("osha-subtabs");
     if (oshaSubtabs) {
-        oshaSubtabs.style.display = isOSHA ? "flex" : "none";
+        oshaSubtabs.style.display = isMultiSpanAllowed ? "flex" : "none";
+    }
+
+    if (!isMultiSpanAllowed) {
+        state.oshaSpanMode = "unique";
+        const subtabUnique = document.getElementById("subtab-span-unique");
+        const subtabMulti = document.getElementById("subtab-span-multi");
+        if (subtabUnique) subtabUnique.classList.add("active");
+        if (subtabMulti) subtabMulti.classList.remove("active");
     }
 
     let isMultiSpan = false;
-    if (isOSHA) {
+    if (state.lineLength < 12.0) {
+        isMultiSpan = false;
+    } else if (isMultiSpanAllowed) {
         isMultiSpan = (state.oshaSpanMode === "multi");
     } else {
-        isMultiSpan = (totalAnchors > 2);
+        isMultiSpan = false;
     }
 
-    const support = getActiveSupport();
+    const support = getActiveSupportType();
 
     const effortL = Calculator.effortLonge(state.product, realSpanMax, state.nbUsers, state.norm, state.fallFactor, support, isMultiSpan);
     const deflL = Calculator.deflection(state.product, realSpanMax, state.fallFactor, support, state.nbUsers, state.norm, isMultiSpan);
@@ -1932,21 +2771,23 @@ function updateCalculationsUI(layout, maxSpan) {
 
     const postName = getActivePostName();
     const lblAnchor = document.getElementById("lbl-anchor-count");
-    if (lblAnchor) lblAnchor.textContent = `Potelets / Ancrages (${postName})`;
+    if (lblAnchor) lblAnchor.textContent = `${TRANSLATIONS.lblAnchorCount[l]} (${postName})`;
+    const displayedAnchorCount = (isOSHA && !isMultiSpan) ? 2 : totalAnchors;
     const valAnchor = document.getElementById("val-anchor-count");
-    if (valAnchor) valAnchor.textContent = totalAnchors;
+    if (valAnchor) valAnchor.textContent = displayedAnchorCount;
 
+    const activeSubRange = (state.product === "LONG RANGE") ? getLongRangeSubRange(state.lineLength) : state.product;
     const lblAbsorber = document.getElementById("lbl-absorber-count");
-    if (lblAbsorber) lblAbsorber.textContent = `Absorbeurs (${state.product})`;
+    if (lblAbsorber) lblAbsorber.textContent = `${TRANSLATIONS.lblAbsorberCount[l]} (${activeSubRange})`;
     const valAbsorber = document.getElementById("val-absorber-count");
-    if (valAbsorber) valAbsorber.textContent = totalAnchors;
+    if (valAbsorber) valAbsorber.textContent = displayedAnchorCount;
 
     document.getElementById("val-fall-factor").textContent = state.fallFactor;
     document.getElementById("val-max-allowed-span").textContent = `${maxSpan.toFixed(1)}m`;
 
     const lenElem = document.getElementById("val-total-line-len");
     const marginCm = (state.product === "LONG RANGE") ? 30 : 20;
-    if (lenElem) lenElem.textContent = `${totalLineLen.toFixed(2)} m (dont 2×${marginCm}cm libres aux ext.)`;
+    if (lenElem) lenElem.textContent = `${totalLineLen.toFixed(2)} m ${formatLineMargin(marginCm)}`;
 
     document.getElementById("val-span-l").textContent = `${realSpanMax.toFixed(2)} m`;
     document.getElementById("val-force-l").textContent = `${effortL.toFixed(2)} kN`;
@@ -1979,15 +2820,15 @@ function updateCalculationsUI(layout, maxSpan) {
         if (rowExt4) rowExt4.style.display = "none";
     }
 
-    const shapeName = state.roofShape === "flat" ? "Toit Plat" : (state.roofShape === "sloped" ? `Toit Incliné (${state.roofSlope}°)` : `Toit Triangulaire (${state.roofSlope}°)`);
+    const shapeName = getLocalizedRoofShapeName();
     document.getElementById("header-dims-display").innerHTML = `<i class="fa-solid fa-ruler-combined"></i> ${shapeName} | L1: ${state.lineLength}m ${state.hasLine2 ? `+ L2: ${state.line2Length}m` : ""}`;
-    document.getElementById("header-system-display").textContent = state.product;
+    const sysDisplayTitle = (state.product === "LONG RANGE") ? `LONG / SUPER / ULTRA RANGE (${activeSubRange})` : (state.product || ["Choisissez un système", "Choose a system", "Elija un sistema"][l]);
+    document.getElementById("header-system-display").textContent = sysDisplayTitle;
 
-    const warningElem = document.getElementById("canvas-warning");
     if (realSpanMax > maxSpan + 0.05) {
-        warningElem.classList.remove("hidden");
+        if (warningElem) warningElem.classList.remove("hidden");
     } else {
-        warningElem.classList.add("hidden");
+        if (warningElem) warningElem.classList.add("hidden");
     }
 }
 
@@ -2005,7 +2846,7 @@ function openExplodedCarousel(component) {
 
     currentCarouselImages = component.exploded;
     currentCarouselIndex = 0;
-    titleElem.textContent = `Vues Éclatées : ${component.name}`;
+    titleElem.textContent = `${TRANSLATIONS.carouselTitle[state.lang || 0]} : ${getComponentName(component)}`;
 
     renderCarouselSlide();
     modal.classList.add("active");
@@ -2060,21 +2901,47 @@ function setupUIEventListeners() {
     const dashboardScreen = document.getElementById("dashboard-screen");
     const configModal = document.getElementById("config-modal");
 
-    document.getElementById("start-config-btn").addEventListener("click", () => {
-        configModal.classList.add("active");
-    });
+    // Language Select Handlers
+    const langSelectHome = document.getElementById("lang-select-home");
+    const langSelectDb = document.getElementById("lang-select-db");
+    if (langSelectHome) {
+        langSelectHome.addEventListener("change", (e) => {
+            applyLanguage(parseInt(e.target.value));
+        });
+    }
+    if (langSelectDb) {
+        langSelectDb.addEventListener("change", (e) => {
+            applyLanguage(parseInt(e.target.value));
+        });
+    }
 
-    document.getElementById("reconfig-btn").addEventListener("click", () => {
-        configModal.classList.add("active");
-    });
+    const startBtn = document.getElementById("start-config-btn");
+    if (startBtn) {
+        startBtn.addEventListener("click", () => {
+            if (configModal) configModal.classList.add("active");
+        });
+    }
 
-    document.getElementById("modal-close-btn").addEventListener("click", () => {
-        configModal.classList.remove("active");
-    });
+    const reconfigBtn = document.getElementById("reconfig-btn");
+    if (reconfigBtn) {
+        reconfigBtn.addEventListener("click", () => {
+            if (configModal) configModal.classList.add("active");
+        });
+    }
 
-    document.getElementById("config-cancel-btn").addEventListener("click", () => {
-        configModal.classList.remove("active");
-    });
+    const closeBtn = document.getElementById("modal-close-btn");
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            if (configModal) configModal.classList.remove("active");
+        });
+    }
+
+    const cancelBtn = document.getElementById("config-cancel-btn");
+    if (cancelBtn) {
+        cancelBtn.addEventListener("click", () => {
+            if (configModal) configModal.classList.remove("active");
+        });
+    }
 
     const roofShapeSelect = document.getElementById("input-roof-shape");
     const roofSlopeGroup = document.getElementById("group-roof-slope");
@@ -2083,8 +2950,20 @@ function setupUIEventListeners() {
         roofShapeSelect.addEventListener("change", (e) => {
             const val = e.target.value;
             roofSlopeGroup.style.display = (val === "sloped" || val === "triangle") ? "block" : "none";
-            if (val === "sloped" && state.product !== "NEW PRO") {
-                alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLe toit mono-pente (incliné) est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nVeuillez contacter l'équipe HOOKT.");
+            if (val === "flat_overhead") {
+                const modalMounting = document.getElementById("input-mounting-type");
+                if (modalMounting) modalMounting.value = "overhead";
+            }
+            if (val !== "flat" && chkLine2 && chkLine2.checked) {
+                alert(TRANSLATIONS.alerts.line2FlatOnly[state.lang || 0]);
+                chkLine2.checked = false;
+                if (groupLine2) groupLine2.style.display = "none";
+                state.hasLine2 = false;
+            }
+            if (val !== "sloped") {
+                const newProComps = COMPONENTS_DB["NEW PRO"] || [];
+                const xcone = newProComps.find(c => c.id === "X-Cone");
+                if (xcone) xcone.checked = false;
             }
         });
     }
@@ -2095,9 +2974,17 @@ function setupUIEventListeners() {
 
     if (chkLine2 && groupLine2) {
         chkLine2.addEventListener("change", (e) => {
+            const shapeVal = roofShapeSelect ? roofShapeSelect.value : state.roofShape;
+            if (e.target.checked && shapeVal !== "flat") {
+                alert(TRANSLATIONS.alerts.line2FlatOnly[state.lang || 0]);
+                e.target.checked = false;
+                groupLine2.style.display = "none";
+                state.hasLine2 = false;
+                return;
+            }
             const locVal = selectXLoc ? selectXLoc.value : "mid";
             if (e.target.checked && locVal === "mid" && state.product !== "NEW PRO") {
-                alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.");
+                alert(TRANSLATIONS.alerts.xmatrixNewProOnly[state.lang || 0]);
                 if (selectXLoc) selectXLoc.value = "end";
             }
             groupLine2.style.display = e.target.checked ? "grid" : "none";
@@ -2107,7 +2994,7 @@ function setupUIEventListeners() {
     if (selectXLoc) {
         selectXLoc.addEventListener("change", (e) => {
             if (e.target.value === "mid" && state.product !== "NEW PRO") {
-                alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.");
+                alert(TRANSLATIONS.alerts.xmatrixNewProOnly[state.lang || 0]);
                 e.target.value = "end";
             }
         });
@@ -2116,24 +3003,26 @@ function setupUIEventListeners() {
     document.getElementById("config-form").addEventListener("submit", (e) => {
         e.preventDefault();
         const selectedShape = document.getElementById("input-roof-shape").value || "flat";
-        if (selectedShape === "sloped" && state.product !== "NEW PRO") {
-            alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLe toit mono-pente (incliné) est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nVeuillez contacter l'équipe HOOKT.");
-            return;
-        }
         state.roofShape = selectedShape;
-        state.roofSlope = parseFloat(document.getElementById("input-roof-slope").value) || 15;
+        if (selectedShape === "flat_overhead" || selectedShape === "flat" || state.product === "LONG RANGE") {
+            state.roofSlope = 0;
+        } else {
+            state.roofSlope = parseFloat(document.getElementById("input-roof-slope").value) || 15;
+        }
         state.lineLength = parseFloat(document.getElementById("input-line-length").value) || 15;
-        state.nbUsers = parseInt(document.getElementById("input-users").value) || 1;
+        let requestedUsers = parseInt(document.getElementById("input-users").value) || 1;
+        if ((state.product === "LIGHT PRO" || state.product === "LONG RANGE") && requestedUsers > 3) {
+            alert(TRANSLATIONS.alerts.usersLimit[state.lang || 0]);
+            requestedUsers = 3;
+            document.getElementById("input-users").value = 3;
+        } else if (requestedUsers > 5) {
+            requestedUsers = 5;
+            document.getElementById("input-users").value = 5;
+        }
+        state.nbUsers = requestedUsers;
         const chuteVal = parseInt(document.getElementById("input-chute").value);
         state.fallFactor = isNaN(chuteVal) ? 1 : chuteVal;
 
-        if (chkLine2 && chkLine2.checked) {
-            const locVal = document.getElementById("select-xmatrix-location").value || "mid";
-            if (locVal === "mid" && state.product !== "NEW PRO") {
-                alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.");
-                return;
-            }
-        }
         if (chkLine2) {
             state.hasLine2 = chkLine2.checked;
             state.line2Length = parseFloat(document.getElementById("input-line2-length").value) || 10;
@@ -2152,8 +3041,8 @@ function setupUIEventListeners() {
 
         // Automatically select X-Matrix component if 2nd line is enabled at mid-span
         if (state.hasLine2 && state.xMatrixLocation === "mid") {
-            const currentComps = COMPONENTS_DB[state.product] || [];
-            const xmat = currentComps.find(c => c.id === "X-Matrix");
+            const sysList = COMPONENTS_DB[state.product || "NEW PRO"] || [];
+            const xmat = sysList.find(c => c.id === "X-Matrix");
             if (xmat) xmat.checked = true;
             state.checkedComponents["X-Matrix"] = true;
         }
@@ -2177,18 +3066,64 @@ function setupUIEventListeners() {
     sysCards.forEach(card => {
         card.addEventListener("click", () => {
             const chosenSystem = card.dataset.system;
-            if (state.roofShape === "sloped" && chosenSystem !== "NEW PRO") {
-                alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLe toit mono-pente (incliné) est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nVeuillez contacter l'équipe HOOKT.");
+
+            // Compatibility Check 1: LONG RANGE requires flat_overhead
+            if (chosenSystem === "LONG RANGE" && state.roofShape !== "flat_overhead") {
+                alert(TRANSLATIONS.alerts.longRangeFlatOverhead[state.lang || 0]);
                 return;
             }
-            const isMidXMat = (state.hasLine2 && state.xMatrixLocation === "mid") || (COMPONENTS_DB[state.product] || []).some(c => c.id === "X-Matrix" && c.checked);
+
+            // Compatibility Check 2: flat_overhead is reserved strictly for LONG RANGE
+            if (chosenSystem !== "LONG RANGE" && state.roofShape === "flat_overhead") {
+                alert(TRANSLATIONS.alerts.overheadLongRangeOnly[state.lang || 0]);
+                return;
+            }
+
+            // Compatibility Check 3: Mono-slope (sloped) is reserved strictly for NEW PRO
+            if (chosenSystem !== "NEW PRO" && state.roofShape === "sloped") {
+                alert(TRANSLATIONS.alerts.slopedNewProOnly[state.lang || 0]);
+                return;
+            }
+
+            // Compatibility Check 4: Mid-span X-Matrix junction requires NEW PRO
+            const isMidXMat = (state.hasLine2 && state.xMatrixLocation === "mid") || (COMPONENTS_DB[state.product || chosenSystem] || []).some(c => c.id === "X-Matrix" && c.checked);
             if (isMidXMat && chosenSystem !== "NEW PRO") {
-                alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.");
+                alert(TRANSLATIONS.alerts.xmatrixNewProOnly[state.lang || 0]);
                 return;
             }
+
+            // User capacity limit check (3 users max for LIGHT PRO and LONG RANGE)
+            const uInput = document.getElementById("input-users");
+            if (chosenSystem === "LIGHT PRO" || chosenSystem === "LONG RANGE") {
+                if (uInput) uInput.max = 3;
+                if (state.nbUsers > 3) {
+                    alert(TRANSLATIONS.alerts.usersLimit[state.lang || 0]);
+                    state.nbUsers = 3;
+                    if (uInput) uInput.value = 3;
+                }
+            } else {
+                if (uInput) uInput.max = 5;
+            }
+
             sysCards.forEach(c => c.classList.remove("active"));
             card.classList.add("active");
             state.product = chosenSystem;
+
+            // Reset multi-span mode if the selected product does not support multi-span (e.g. LONG RANGE)
+            const isOSHA = (state.norm === "OSHA/ANSI" || state.norm === "OSHA" || state.norm === "ANSI");
+            const isMultiSpanAllowed = isOSHA && (chosenSystem === "NEW PRO" || chosenSystem === "LIGHT PRO" || chosenSystem === "LightPro");
+            if (!isMultiSpanAllowed) {
+                state.oshaSpanMode = "unique";
+                const subtabUnique = document.getElementById("subtab-span-unique");
+                const subtabMulti = document.getElementById("subtab-span-multi");
+                if (subtabUnique) subtabUnique.classList.add("active");
+                if (subtabMulti) subtabMulti.classList.remove("active");
+            }
+
+            // Ensure all checkboxes start UNCHECKED by default when choosing a system
+            const sysList = COMPONENTS_DB[chosenSystem] || [];
+            sysList.forEach(c => c.checked = false);
+
             renderComponentsChecklist();
             preloadActiveModels();
             update3DScene();
@@ -2196,10 +3131,13 @@ function setupUIEventListeners() {
     });
 
     // Roof Texture & Color Pickers
-    document.getElementById("select-roof-texture").addEventListener("change", (e) => {
-        state.roofTexture = e.target.value;
-        update3DScene();
-    });
+    const roofTexSelect = document.getElementById("select-roof-texture");
+    if (roofTexSelect) {
+        roofTexSelect.addEventListener("change", (e) => {
+            state.roofTexture = e.target.value;
+            update3DScene();
+        });
+    }
 
     const colRoof = document.getElementById("color-roof");
     if (colRoof) {
@@ -2242,7 +3180,19 @@ function setupUIEventListeners() {
         btn2D.classList.remove("active");
         state.viewMode = "3d";
         activeCam = perspectiveCam;
-        controls.enabled = true;
+
+        if (controls) {
+            controls.object = perspectiveCam;
+            controls.enabled = true;
+            controls.enableRotate = true;
+            controls.enableZoom = true;
+            controls.enablePan = true;
+            const centerX = state.L / 2;
+            const centerZ = state.l / 2;
+            controls.target.set(centerX, 0.2, centerZ);
+            controls.update();
+        }
+
         update3DScene();
     });
 
@@ -2251,19 +3201,43 @@ function setupUIEventListeners() {
         btn3D.classList.remove("active");
         state.viewMode = "2d";
         activeCam = orthographicCam;
-        controls.enabled = false;
+
+        const centerX = state.L / 2;
+        const centerZ = state.l / 2;
+        orthographicCam.position.set(centerX, 40, centerZ);
+        orthographicCam.lookAt(centerX, 0, centerZ);
+
+        if (controls) {
+            controls.object = orthographicCam;
+            controls.enabled = true;
+            controls.enableRotate = false; // Lock rotation so camera remains looking straight down
+            controls.enableZoom = true;   // Enable mouse wheel / pinch zoom in 2D!
+            controls.enablePan = true;    // Enable drag / pan around 2D plan!
+            controls.target.set(centerX, 0, centerZ);
+            controls.update();
+        }
+
         update3DScene();
     });
 
     // Toolbar Actions
     document.getElementById("btn-reset-cam").addEventListener("click", () => {
+        const centerX = state.L / 2;
+        const centerZ = state.l / 2;
         if (state.viewMode === "3d") {
-            const centerX = state.L / 2;
-            const centerZ = state.l / 2;
             const dist = Math.max(state.L, state.l) * 1.4;
             perspectiveCam.position.set(centerX + dist * 0.8, dist * 0.9, centerZ + dist * 0.8);
             controls.target.set(centerX, 0.2, centerZ);
             controls.update();
+        } else {
+            orthographicCam.zoom = 1.0;
+            orthographicCam.position.set(centerX, 40, centerZ);
+            orthographicCam.lookAt(centerX, 0, centerZ);
+            orthographicCam.updateProjectionMatrix();
+            if (controls) {
+                controls.target.set(centerX, 0, centerZ);
+                controls.update();
+            }
         }
     });
 
@@ -2273,14 +3247,59 @@ function setupUIEventListeners() {
         update3DScene();
     });
 
-    document.getElementById("btn-fullscreen").addEventListener("click", () => {
+    function handleFullscreenChange() {
+        const isFs = !!document.fullscreenElement || !!document.webkitFullscreenElement || !!document.mozFullScreenElement || !!document.msFullscreenElement;
+        const btnFs = document.getElementById("btn-fullscreen");
         const viewport = document.querySelector(".canvas-wrapper");
-        if (!document.fullscreenElement) {
-            viewport.requestFullscreen().catch(err => console.log(err));
-        } else {
-            document.exitFullscreen();
+
+        if (btnFs) {
+            btnFs.innerHTML = isFs
+                ? '<i class="fa-solid fa-compress"></i>'
+                : '<i class="fa-solid fa-expand"></i>';
+            btnFs.classList.toggle("active", isFs);
+            btnFs.title = isFs ? "Quitter le plein écran" : "Plein écran";
         }
-    });
+
+        if (viewport) {
+            viewport.classList.toggle("is-fullscreen", isFs);
+        }
+
+        // Trigger multiple resize recalculations to capture post-transition DOM layout rect
+        onWindowResize();
+        requestAnimationFrame(() => onWindowResize());
+        setTimeout(() => onWindowResize(), 100);
+        setTimeout(() => onWindowResize(), 300);
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+    const btnFs = document.getElementById("btn-fullscreen");
+    if (btnFs) {
+        btnFs.addEventListener("click", () => {
+            const viewport = document.querySelector(".canvas-wrapper");
+            const isFs = !!document.fullscreenElement || !!document.webkitFullscreenElement || !!document.mozFullScreenElement || !!document.msFullscreenElement;
+            if (!isFs) {
+                if (viewport.requestFullscreen) {
+                    viewport.requestFullscreen().catch(err => console.log(err));
+                } else if (viewport.webkitRequestFullscreen) {
+                    viewport.webkitRequestFullscreen();
+                } else if (viewport.msRequestFullscreen) {
+                    viewport.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(err => console.log(err));
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        });
+    }
 
     // Node Inspector Events
     const nodeTypeSelect = document.getElementById("node-type-select");
@@ -2398,6 +3417,9 @@ function setupUIEventListeners() {
             tabEN.classList.add("active");
             if (tabOSHA) tabOSHA.classList.remove("active");
             state.norm = "EN 795";
+            state.oshaSpanMode = "unique";
+            if (subtabUnique) subtabUnique.classList.add("active");
+            if (subtabMulti) subtabMulti.classList.remove("active");
             update3DScene();
         });
     }
@@ -2407,6 +3429,12 @@ function setupUIEventListeners() {
             tabOSHA.classList.add("active");
             if (tabEN) tabEN.classList.remove("active");
             state.norm = "OSHA/ANSI";
+            const isMultiSpanAllowed = (state.product === "NEW PRO" || state.product === "LIGHT PRO" || state.product === "LightPro");
+            if (!isMultiSpanAllowed) {
+                state.oshaSpanMode = "unique";
+                if (subtabUnique) subtabUnique.classList.add("active");
+                if (subtabMulti) subtabMulti.classList.remove("active");
+            }
             update3DScene();
         });
     }
@@ -2422,6 +3450,10 @@ function setupUIEventListeners() {
 
     if (subtabMulti) {
         subtabMulti.addEventListener("click", () => {
+            const isOSHA = (state.norm === "OSHA/ANSI" || state.norm === "OSHA" || state.norm === "ANSI");
+            const isMultiSpanAllowed = isOSHA && (state.product === "NEW PRO" || state.product === "LIGHT PRO" || state.product === "LightPro");
+            if (!isMultiSpanAllowed) return;
+
             subtabMulti.classList.add("active");
             if (subtabUnique) subtabUnique.classList.remove("active");
             state.oshaSpanMode = "multi";
@@ -2541,34 +3573,34 @@ function validateProductAssociations() {
     const isXMatrixChecked = list.some(c => c.id === "X-Matrix" && c.checked);
 
     if (state.roofShape === "sloped" && state.product !== "NEW PRO") {
-        alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLe toit mono-pente (incliné) est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nVeuillez contacter l'équipe HOOKT.");
+        alert(TRANSLATIONS.alerts.slopedNewProOnly[state.lang || 0]);
         return false;
     }
 
     const isMidXMatrix = (state.hasLine2 && state.xMatrixLocation === "mid") || isXMatrixChecked || state.checkedComponents["X-Matrix"];
 
     if (isMidXMatrix && state.product !== "NEW PRO") {
-        alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.");
+        alert(TRANSLATIONS.alerts.xmatrixNewProOnly[state.lang || 0]);
         return false;
     }
 
     if (hasMiniOmega && state.product !== "NEW PRO") {
-        alert("⚠️ ALERTE CONFIGURATION INVALIDE :\nLe potelet MINI OMEGA ne s'utilise qu'avec un ancrage NEWPRO (jamais seul, ni avec Light Pro ou Longue Portée).");
+        alert(TRANSLATIONS.alerts.miniOmegaNewPro[state.lang || 0]);
         return false;
     }
 
     if (hasBasculant && state.product !== "LIGHT PRO") {
-        alert("⚠️ ALERTE CONFIGURATION INVALIDE :\nLe potelet basculant ne s'utilise qu'avec un ancrage Light Pro.");
+        alert(TRANSLATIONS.alerts.basculantLightPro[state.lang || 0]);
         return false;
     }
 
     if (hasRigide && state.product === "LONG RANGE") {
-        alert("⚠️ ALERTE CONFIGURATION INVALIDE :\nLe potelet rigide ne s'utilise qu'avec les gammes NEWPRO ou Light Pro.");
+        alert(TRANSLATIONS.alerts.rigideNotLongRange[state.lang || 0]);
         return false;
     }
 
     if (hasAFix && state.product !== "LONG RANGE") {
-        alert("⚠️ ALERTE CONFIGURATION INVALIDE :\nLa pièce A.FIX ne s'utilise qu'avec la gamme Longue Portée.");
+        alert(TRANSLATIONS.alerts.afixLongRangeOnly[state.lang || 0]);
         return false;
     }
 
@@ -2577,14 +3609,15 @@ function validateProductAssociations() {
 
 function formatFixationType(typeFixation) {
     if (!typeFixation || typeFixation === "—" || typeFixation.trim() === "" || typeFixation.includes("Non renseigné")) {
-        return "Se référer à la notice";
+        return TRANSLATIONS.pdf.referToManual[state.lang || 0];
     }
     return typeFixation;
 }
 
 function calculateXConeCount(layout) {
     if (!layout) return 0;
-    const spacing = (state.roofSlope > 30) ? 0.5 : 1.0;
+    const spacing = Calculator.getXConeSpacing();
+    if (spacing <= 0) return 0;
     let totalCones = 0;
     const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
 
@@ -2629,8 +3662,16 @@ function calculateXConeCount(layout) {
 function generatePDFReport() {
     if (!validateProductAssociations()) return;
 
+    const l = state.lang || 0;
+    const pdfTrans = TRANSLATIONS.pdf;
+
+    if ((state.product === "LONG RANGE" || state.product === "LongRange") && (state.lineLength < 10.0 || state.lineLength > 56.0)) {
+        alert(TRANSLATIONS.alerts.longRangeLengthRange[l]);
+        return;
+    }
+
     if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert("Chargement du générateur PDF en cours... Veuillez réespayer dans un instant.");
+        alert(TRANSLATIONS.alerts.pdfLoading[l]);
         return;
     }
 
@@ -2646,17 +3687,18 @@ function generatePDFReport() {
     doc.text("HOOKT", 14, 17);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("RAPPORT D'INSTALLATION & NOTE DE CALCUL LIGNE DE VIE", 50, 16);
+    doc.text(pdfTrans.title[l], 50, 16);
 
     // Section 1: Lifeline Details
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text("1. Synthèse de la Ligne de Vie HOOKT", 14, 35);
+    doc.text(pdfTrans.sec1Title[l], 14, 35);
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    const today = new Date().toLocaleDateString("fr-FR");
+    const dateLocales = ["fr-FR", "en-US", "es-ES"];
+    const today = new Date().toLocaleDateString(dateLocales[l] || "fr-FR");
 
     const activeLayout = Calculator.calculateAnchorPositions(state.L, state.l, Calculator.getMaxSpan(state.product));
     const positions = (activeLayout && activeLayout.all) ? activeLayout.all : (Array.isArray(activeLayout) ? activeLayout : []);
@@ -2665,61 +3707,101 @@ function generatePDFReport() {
     const totalLineLen = Calculator.calculateTotalLineLength(activeLayout, state.product);
     const realSpanMax = Calculator.calculateMaxRealSpan(activeLayout);
     const isOSHA = (state.norm === "OSHA/ANSI" || state.norm === "OSHA" || state.norm === "ANSI");
-    const isMultiSpan = isOSHA ? (state.oshaSpanMode === "multi") : (totalAnchors > 2);
-    const support = getActiveSupport();
+    const isMultiSpanAllowed = isOSHA && (state.product === "NEW PRO" || state.product === "LIGHT PRO" || state.product === "LightPro");
+    const isMultiSpan = isMultiSpanAllowed ? (state.oshaSpanMode === "multi") : false;
+    const support = getActiveSupportType();
 
-    const effortL = Calculator.effortLonge(state.product, realSpanMax, state.nbUsers, state.norm, state.fallFactor, support, isMultiSpan);
-    const deflL = Calculator.deflection(state.product, realSpanMax, state.fallFactor, support, state.nbUsers, state.norm, isMultiSpan);
-    const ext1L = Calculator.extremiteForce1(state.product, realSpanMax, state.nbUsers, state.norm, effortL, deflL, state.fallFactor, support, isMultiSpan);
-    const ext2L = Calculator.extremiteForce2(state.product, realSpanMax, state.nbUsers, state.norm, effortL, deflL, state.fallFactor, support, isMultiSpan);
-
-    const supportLabel = state.roofTexture === "concrete" ? "Dalle Béton" : (state.roofTexture === "metal" ? "Bac Acier Nervuré" : (state.roofTexture === "bitumen" ? "Étanchéité Bitume" : "Structure Metal / Autre"));
-    const slopeText = state.roofShape === "flat" ? "0° (Toit Plat)" : `${state.roofSlope}° (${state.roofShape === "sloped" ? "Toit Incliné" : "Toit Triangulaire"})`;
+    const supportLabel = state.roofTexture === "concrete" ? pdfTrans.concrete[l] : (state.roofTexture === "metal" ? pdfTrans.metal[l] : (state.roofTexture === "bitumen" ? pdfTrans.bitumen[l] : pdfTrans.metalOther[l]));
+    const slopeText = (state.roofShape === "flat" || state.roofShape === "flat_overhead" || state.product === "LONG RANGE")
+        ? pdfTrans.flatRoofPdf[l]
+        : `${state.roofSlope}° (${state.roofShape === "sloped" ? pdfTrans.slopedRoofPdf[l] : pdfTrans.triangleRoofPdf[l]})`;
 
     const postName = getActivePostName();
-    doc.text(`Date de génération : ${today}`, 14, 42);
-    doc.text(`Gamme de produit : ${state.product}`, 14, 48);
-    doc.text(`Norme de calcul : ${state.norm}`, 14, 54);
-    doc.text(`Facteur de chute : Facteur ${state.fallFactor}`, 14, 60);
-    doc.text(`Nombre d'ancrages (${postName}) : ${totalAnchors}`, 14, 66);
-    doc.text(`Nombre d'absorbeurs (${state.product}) : ${totalAnchors}`, 14, 72);
+    const displayProductPdf = (state.product === "LONG RANGE")
+        ? `LONG / SUPER / ULTRA RANGE (${getLongRangeSubRange(state.lineLength)})`
+        : state.product;
+    const displayAbsorberPdf = (state.product === "LONG RANGE") ? getLongRangeSubRange(state.lineLength) : state.product;
 
-    doc.text(`Support de pose : ${supportLabel}`, 110, 42);
-    doc.text(`Pente de toiture : ${slopeText}`, 110, 48);
+    const colRightX = 125;
+
+    doc.text(`${pdfTrans.genDate[l]}${today}`, 14, 42);
+    doc.text(`${pdfTrans.productRange[l]}${displayProductPdf}`, 14, 48);
+    doc.text(`${pdfTrans.calcStandard[l]}${state.norm}`, 14, 54);
+    doc.text(`${pdfTrans.fallFactor[l]}${state.fallFactor}`, 14, 60);
+    const pdfAnchorCount = (isOSHA && !isMultiSpan) ? 2 : totalAnchors;
+    doc.text(`${pdfTrans.anchorCount[l]}${postName}) : ${pdfAnchorCount}`, 14, 66);
+    doc.text(`${pdfTrans.absorberCount[l]}${displayAbsorberPdf}) : ${pdfAnchorCount}`, 14, 72);
+
+    doc.text(`${pdfTrans.roofSlope[l]}${slopeText}`, colRightX, 42);
     if (state.hasLine2) {
-        const juncText = state.xMatrixLocation === "mid" ? "Jonction X-Matrix Milieu" : "Jonction Virage/Extrémité";
-        doc.text(`Lignes : L1 = ${state.lineLength} m  |  L2 = ${state.line2Length} m (${juncText})`, 110, 54);
+        const juncText = state.xMatrixLocation === "mid" ? pdfTrans.midJuncPdf[l] : pdfTrans.endJuncPdf[l];
+        doc.text(`${pdfTrans.linesSummary[l]}L1 = ${state.lineLength} m  |  L2 = ${state.line2Length} m (${juncText})`, colRightX, 48);
     } else {
-        doc.text(`Longueur Ligne (L1) : ${state.lineLength} m`, 110, 54);
+        doc.text(`${pdfTrans.lineLengthL1[l]}${state.lineLength} m`, colRightX, 48);
     }
-    doc.text(`Longueur totale développée : ${totalLineLen.toFixed(2)} m`, 110, 60);
-    doc.text(`Nombre d'utilisateurs max : ${state.nbUsers} pers.`, 110, 66);
+    doc.text(`${pdfTrans.totalDevLength[l]}${totalLineLen.toFixed(2)} m`, colRightX, 54);
+    doc.text(`${pdfTrans.maxUsers[l]}${state.nbUsers}`, colRightX, 60);
 
-    // Section 2: Mechanical calculations table
+    // Section 2: Mechanical calculations table for ALL users of system (1..5 for NEW PRO, 1..3 for LIGHT PRO / LONG RANGE)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("2. Résultats Mécaniques & Sollicitations", 14, 83);
+    doc.text(pdfTrans.sec2Title[l], 14, 83);
 
-    const deflDisplay = isOSHA ? `${deflL.toFixed(2)} mm` : `${Math.round(deflL)} mm`;
+    const prodUpper = (state.product || "").toUpperCase();
+    const maxSysUsers = (prodUpper.includes("LIGHT") || prodUpper.includes("LONG")) ? 3 : 5;
+
+    const table2HeaderRow = [pdfTrans.table2Headers[l][0]];
+    for (let u = 1; u <= maxSysUsers; u++) {
+        if (l === 1) {
+            table2HeaderRow.push(u === 1 ? "1 user" : `${u} users`);
+        } else {
+            table2HeaderRow.push(`${u} pers.`);
+        }
+    }
+
+    const rowMaxSpan = [pdfTrans.rowMaxSpan[l]];
+    const rowForceL = [pdfTrans.rowForceL[l]];
+    const rowDefl = [pdfTrans.rowDefl[l]];
+    const rowExt1 = [pdfTrans.rowExt1[l]];
+    const rowExt2 = [pdfTrans.rowExt2[l]];
+    const rowExt3 = (isOSHA && isMultiSpan) ? [pdfTrans.rowExt3[l]] : null;
+    const rowExt4 = (isOSHA && isMultiSpan) ? [pdfTrans.rowExt4[l]] : null;
+
+    for (let u = 1; u <= maxSysUsers; u++) {
+        const uEffort = Calculator.effortLonge(state.product, realSpanMax, u, state.norm, state.fallFactor, support, isMultiSpan);
+        const uDefl = Calculator.deflection(state.product, realSpanMax, state.fallFactor, support, u, state.norm, isMultiSpan);
+        const uExt1 = Calculator.extremiteForce1(state.product, realSpanMax, u, state.norm, uEffort, uDefl, state.fallFactor, support, isMultiSpan);
+        const uExt2 = Calculator.extremiteForce2(state.product, realSpanMax, u, state.norm, uEffort, uDefl, state.fallFactor, support, isMultiSpan);
+
+        rowMaxSpan.push(`${realSpanMax.toFixed(2)} m`);
+        rowForceL.push(`${uEffort.toFixed(2)} kN`);
+        rowDefl.push(isOSHA ? `${uDefl.toFixed(2)} mm` : `${Math.round(uDefl)} mm`);
+        rowExt1.push(`${uExt1.toFixed(1)} kN`);
+        rowExt2.push(`${uExt2.toFixed(1)} kN`);
+
+        if (isOSHA && isMultiSpan) {
+            const uExt3 = Calculator.extremiteForce3(state.product, realSpanMax, u, state.norm, uEffort, uDefl, state.fallFactor, support, isMultiSpan);
+            const uExt4 = Calculator.extremiteForce4(state.product, realSpanMax, u, state.norm, uEffort, uDefl, state.fallFactor, support, isMultiSpan);
+            rowExt3.push(`${uExt3.toFixed(1)} kN`);
+            rowExt4.push(`${uExt4.toFixed(1)} kN`);
+        }
+    }
 
     const mechData = [
-        ["Portée réelle max", `${realSpanMax.toFixed(2)} m`],
-        ["Effort longe (Fmax)", `${effortL.toFixed(2)} kN`],
-        ["Flèche maximale", deflDisplay],
-        ["Force Extrémité 1", `${ext1L.toFixed(1)} kN`],
-        ["Force Extrémité 2", `${ext2L.toFixed(1)} kN`]
+        rowMaxSpan,
+        rowForceL,
+        rowDefl,
+        rowExt1,
+        rowExt2
     ];
-
     if (isOSHA && isMultiSpan) {
-        const ext3L = Calculator.extremiteForce3(state.product, realSpanMax, state.nbUsers, state.norm, effortL, deflL, state.fallFactor, support, isMultiSpan);
-        const ext4L = Calculator.extremiteForce4(state.product, realSpanMax, state.nbUsers, state.norm, effortL, deflL, state.fallFactor, support, isMultiSpan);
-        mechData.push(["Force Ancrage 3", `${ext3L.toFixed(1)} kN`]);
-        mechData.push(["Force Ancrage 4", `${ext4L.toFixed(1)} kN`]);
+        mechData.push(rowExt3);
+        mechData.push(rowExt4);
     }
 
     doc.autoTable({
         startY: 86,
-        head: [["Indicateur Mécanique", "Valeur Calculée"]],
+        head: [table2HeaderRow],
         body: mechData,
         theme: 'striped',
         headStyles: { fillColor: [15, 23, 42] },
@@ -2730,7 +3812,7 @@ function generatePDFReport() {
     const currentY = doc.lastAutoTable.finalY + 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("3. Nomenclatures des Composants & Fixations Préconisées", 14, currentY);
+    doc.text(pdfTrans.sec3Title[l], 14, currentY);
 
     const compsList = COMPONENTS_DB[state.product] || [];
     const checkedComps = compsList.filter(c => c.checked);
@@ -2743,8 +3825,14 @@ function generatePDFReport() {
 
     const tableRows = [];
 
-    // 1. Matrice (Absorbeur) selon la gamme
-    const matriceName = state.product === "NEW PRO" ? "Matrice NEWPRO (Absorbeur)" : (state.product === "LIGHT PRO" ? "Matrice Light Pro (Absorbeur)" : "Matrice Longue Portée");
+    // 1. Matrice (Absorbeur) selon la gamme / sous-gamme
+    const pdfSubRange = getLongRangeSubRange(state.lineLength);
+    const matriceLongRangeText = pdfSubRange === "LONG RANGE"
+        ? ["Matrice Longue Portée (Long Range)", "Long Range Matrix", "Matriz Larga Distancia (Long Range)"][l]
+        : (pdfSubRange === "SUPER RANGE"
+            ? ["Matrice Super Portée (Super Range)", "Super Range Matrix", "Matriz Super Distancia (Super Range)"][l]
+            : ["Matrice Ultra Portée (Ultra Range)", "Ultra Range Matrix", "Matriz Ultra Distancia (Ultra Range)"][l]);
+    const matriceName = state.product === "NEW PRO" ? pdfTrans.matriceNewPro[l] : (state.product === "LIGHT PRO" ? pdfTrans.matriceLightPro[l] : matriceLongRangeText);
     const lvl1 = getFixationInfo(state.product, "matrice_platine", state.roofTexture, state.product);
     const countLvl1 = typeof lvl1.nombre === 'number' ? `${lvl1.nombre * totalAnchors} (${lvl1.nombre}/matrice)` : lvl1.nombre;
     tableRows.push([
@@ -2754,10 +3842,10 @@ function generatePDFReport() {
     ]);
 
     // 2. Platine de fixation au support / potelet
-    const platineName = state.product === "NEW PRO" ? "Platine de fixation NEWPRO" : (state.product === "LIGHT PRO" ? "Platine de fixation Light Pro" : "Platine de fixation Longue Portée");
+    const platineName = state.product === "NEW PRO" ? pdfTrans.platineNewPro[l] : (state.product === "LIGHT PRO" ? pdfTrans.platineLightPro[l] : pdfTrans.platineLongRange[l]);
     const lvl2 = getFixationInfo(state.product, "platine_support", state.roofTexture, state.product);
     const countLvl2 = typeof lvl2.nombre === 'number' ? `${lvl2.nombre * totalAnchors} (${lvl2.nombre}/platine)` : lvl2.nombre;
-    const typeFixPlatine = hasOmegaOrMini ? "Boulons Inox M12 x 30 + rondelles" : formatFixationType(lvl2.type_fixation);
+    const typeFixPlatine = hasOmegaOrMini ? pdfTrans.inoxBolts[l] : formatFixationType(lvl2.type_fixation);
 
     tableRows.push([
         `${platineName} (x${totalAnchors})`,
@@ -2769,7 +3857,6 @@ function generatePDFReport() {
     checkedComps.forEach(c => {
         const cIdLower = (c.id || "").toLowerCase();
 
-        // Skip main absorbers because they are already detailed above as Matrice and Platine
         if (cIdLower === "new_pro" || cIdLower === "lightpro" || cIdLower === "longrange") {
             return;
         }
@@ -2790,19 +3877,19 @@ function generatePDFReport() {
         }
 
         tableRows.push([
-            `${c.name} (x${qtyItem})`,
+            `${getComponentName(c)} (x${qtyItem})`,
             `${countFix}`,
             formatFixationType(fixInfo.type_fixation)
         ]);
     });
 
     if (tableRows.length === 0) {
-        tableRows.push(["Aucun composant coché", "-", "-"]);
+        tableRows.push([pdfTrans.noCompChecked[l], "-", "-"]);
     }
 
     doc.autoTable({
         startY: currentY + 4,
-        head: [["Nom de la pièce", "Nombre de fixations", "Type de fixation"]],
+        head: [pdfTrans.table3Headers[l]],
         body: tableRows,
         theme: 'grid',
         headStyles: { fillColor: [37, 99, 235] },
@@ -2822,9 +3909,9 @@ function generatePDFReport() {
         doc.setTextColor(100, 116, 139);
 
         const currentYear = new Date().getFullYear();
-        doc.text(`© ${currentYear} HOOKT. Tous droits réservés. — Protection et Sécurité en Hauteur`, 14, 285);
-        doc.text("Site Web : www.go-hookt.com   |   Email : contact@go-hookt.com   |   Tél : 05 59 52 40 48", 14, 289);
-        doc.text(`Page ${i} / ${pageCount}`, 180, 289);
+        doc.text(pdfTrans.footerRights[l].replace('{year}', currentYear), 14, 285);
+        doc.text(pdfTrans.footerContacts[l], 14, 289);
+        doc.text(`${pdfTrans.pageStr[l]} ${i} / ${pageCount}`, 180, 289);
     }
 
     doc.save(`HOOKT_Rapport_Installation_${state.product.replace(/\s+/g, '_')}_${today.replace(/\//g, '-')}.pdf`);
@@ -2834,7 +3921,19 @@ function renderComponentsChecklist() {
     const listContainer = document.getElementById("components-list");
     if (!listContainer) return;
 
+    const l = state.lang || 0;
     listContainer.innerHTML = "";
+    if (!state.product) {
+        listContainer.innerHTML = `
+            <div class="empty-state-notice" style="padding: 1.25rem; text-align: center; color: #94a3b8; font-size: 0.95rem; background: rgba(255,255,255,0.04); border: 1px dashed #334155; border-radius: 10px; margin-top: 0.5rem; line-height: 1.5;">
+                <i class="fa-solid fa-hand-pointer" style="margin-right: 0.5rem; color: #3b82f6; font-size: 1.2rem;"></i><br>
+                <strong>${TRANSLATIONS.emptyStateTitle[l]}</strong><br>
+                ${TRANSLATIONS.emptyStateSub[l]}
+            </div>
+        `;
+        return;
+    }
+
     const comps = COMPONENTS_DB[state.product] || [];
 
     comps.forEach(c => {
@@ -2844,7 +3943,7 @@ function renderComponentsChecklist() {
 
         let explodedBtnHTML = "";
         if (c.exploded && c.exploded.length > 0) {
-            explodedBtnHTML = `<button type="button" class="btn-exploded" title="Vue Éclatée"><i class="fa-solid fa-eye"></i></button>`;
+            explodedBtnHTML = `<button type="button" class="btn-exploded" title="${TRANSLATIONS.carouselTitle[l]}"><i class="fa-solid fa-eye"></i></button>`;
         }
 
         item.innerHTML = `
@@ -2852,7 +3951,7 @@ function renderComponentsChecklist() {
                 <input type="checkbox" class="comp-chk-input" id="chk-${c.id}" ${c.checked ? "checked" : ""}>
             </div>
             <div class="comp-info">
-                <span class="comp-name">${c.name}</span>
+                <span class="comp-name">${getComponentName(c)}</span>
             </div>
             ${explodedBtnHTML}
         `;
@@ -2865,11 +3964,37 @@ function renderComponentsChecklist() {
                 chk.checked = !chk.checked;
             }
             c.checked = chk.checked;
-            item.classList.toggle("active", c.checked);
 
+            // Constraint A: X-Cone restriction (allowed ONLY on mono-pitch / sloped roof between 15° and 75°)
+            if (c.id === "X-Cone" && c.checked) {
+                if (state.roofShape !== "sloped") {
+                    alert("⚠️ CONFIGURATION INCOMPATIBLE :\nL'option X-CONE est utilisable uniquement en configuration toit mono-pente (incliné).");
+                    c.checked = false;
+                    chk.checked = false;
+                    item.classList.remove("active");
+                    return;
+                }
+                const slope = state.roofSlope || 0;
+                if (slope < 15 || slope > 75) {
+                    alert("⚠️ CONFIGURATION INCOMPATIBLE :\nL'option X-CONE est utilisable uniquement pour une pente de toiture comprise entre 15° et 75°.");
+                    c.checked = false;
+                    chk.checked = false;
+                    item.classList.remove("active");
+                    return;
+                }
+            }
+
+            // Constraint B: X-Matrix restriction
             if (c.id === "X-Matrix") {
                 if (c.checked && state.product !== "NEW PRO") {
                     alert("⚠️ CONFIGURATION NON SUPPORTÉE :\nLa jonction X-MATRIX en milieu de ligne est uniquement disponible pour le système NEW PRO (et non Light Pro ni Long Range).\nPour cette étude spécifique, veuillez contacter l'équipe HOOKT.");
+                    c.checked = false;
+                    chk.checked = false;
+                    item.classList.remove("active");
+                    return;
+                }
+                if (c.checked && state.roofShape !== "flat") {
+                    alert("⚠️ CONFIGURATION INCOMPATIBLE :\nLa seconde direction (Ligne 2 avec X-MATRIX) peut uniquement être sélectionnée en configuration Toit Plat (Terrasse Standard).");
                     c.checked = false;
                     chk.checked = false;
                     item.classList.remove("active");
@@ -2880,6 +4005,25 @@ function renderComponentsChecklist() {
                 const chkFormLine2 = document.getElementById("input-has-line2");
                 if (chkFormLine2) chkFormLine2.checked = c.checked;
             }
+
+            // Constraint C: Mutual Exclusivity for Main System Models (Absorbers & Posts) within NEW PRO and LIGHT PRO (LONG RANGE allows both Absorber & A-Fix checked)
+            if (state.product !== "LONG RANGE") {
+                const mainModelVariantIds = ["New_Pro", "Mini_Omega", "P_Inox", "LightPro", "PB_HOOKt", "P_Galva"];
+                if (c.checked && mainModelVariantIds.includes(c.id)) {
+                    const sysList = COMPONENTS_DB[state.product || "NEW PRO"] || [];
+                    sysList.forEach(otherComp => {
+                        if (otherComp.id !== c.id && mainModelVariantIds.includes(otherComp.id)) {
+                            otherComp.checked = false;
+                            if (state.checkedComponents) state.checkedComponents[otherComp.id] = false;
+                        }
+                    });
+                }
+            }
+
+            if (state.checkedComponents) state.checkedComponents[c.id] = c.checked;
+            item.classList.toggle("active", c.checked);
+
+            renderComponentsChecklist();
 
             preloadActiveModels();
             update3DScene();
@@ -2900,4 +4044,5 @@ function renderComponentsChecklist() {
 // Kickoff
 document.addEventListener("DOMContentLoaded", () => {
     setupUIEventListeners();
+    applyLanguage(state.lang || 0);
 });

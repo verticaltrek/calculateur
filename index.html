@@ -24,12 +24,12 @@
          ========================================== -->
     <section id="home-screen" class="screen active">
         <div class="home-glass-card">
-            <div class="brand-badge">
-                <i class="fa-solid fa-shield-halved"></i> SÉCURITÉ EN HAUTEUR
+            <div class="brand-badge" id="home-brand-badge">
+                <i class="fa-solid fa-shield-halved"></i> <span>SÉCURITÉ EN HAUTEUR</span>
             </div>
             <h1 class="logo-title">HOOKT</h1>
             <p id="home-subtitle" class="home-subtitle">Configurateur Intelligent de Lignes de Vie pour Toitures</p>
-            <p class="home-description">
+            <p class="home-description" id="home-description">
                 Dimensionnez, visualisez en 3D/2D et éditez la note de conformité réglementaire (EN 795-C, TS 16415,
                 OSHA/ANSI) pour les systèmes HOOKT New Pro, Light Pro et Long Range.
             </p>
@@ -67,7 +67,8 @@
                     <div class="form-group full-width">
                         <label id="lbl-shape" for="input-roof-shape">Forme / Typologie du Toit :</label>
                         <select id="input-roof-shape" class="select-custom">
-                            <option value="flat" selected>Toit Plat (Terrasse)</option>
+                            <option value="flat" selected>Toit Plat (Terrasse Standard)</option>
+                            <option value="flat_overhead">Toit Plat (Overhead - Long/Super/Ultra Range uniquement)</option>
                             <option value="sloped">Toit Incliné (Monopente avec pente)</option>
                             <option value="triangle">Toit Triangulaire (Pignon / Double Pente)</option>
                         </select>
@@ -77,7 +78,7 @@
                     <div class="form-group" id="group-roof-slope">
                         <label id="lbl-slope" for="input-roof-slope">Pente du toit :</label>
                         <div class="input-with-unit">
-                            <input type="number" id="input-roof-slope" min="1" max="60" value="15" step="1">
+                            <input type="number" id="input-roof-slope" min="1" max="75" value="15" step="1">
                             <span class="unit">°</span>
                         </div>
                     </div>
@@ -105,7 +106,7 @@
                     <div class="form-group">
                         <label id="lbl-chute" for="input-chute">Facteur de chute :</label>
                         <select id="input-chute" class="select-custom">
-                            <option value="0">Facteur 0 (Restreint)</option>
+                            <option value="0">Facteur 0 (Restreint / Overhead)</option>
                             <option value="1" selected>Facteur 1 (Standard)</option>
                             <option value="2">Facteur 2 (Sévère)</option>
                         </select>
@@ -115,13 +116,13 @@
                     <div class="form-group full-width margin-top-sm">
                         <label class="checkbox-label" for="input-has-line2">
                             <input type="checkbox" id="input-has-line2">
-                            <span><i class="fa-solid fa-code-fork"></i> Activer une seconde direction (Ligne 2)</span>
+                            <span id="lbl-has-line2-span"><i class="fa-solid fa-code-fork"></i> Activer une seconde direction (Ligne 2)</span>
                         </label>
                     </div>
 
                     <div id="group-line2-options" class="form-grid full-width" style="display: none;">
                         <div class="form-group">
-                            <label for="input-line2-length">Longueur Ligne 2 :</label>
+                            <label id="lbl-line2-len" for="input-line2-length">Longueur Ligne 2 :</label>
                             <div class="input-with-unit">
                                 <input type="number" id="input-line2-length" min="2" max="200" value="10" step="0.5">
                                 <span class="unit">m</span>
@@ -129,7 +130,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="select-xmatrix-location">Type / Emplacement Jonction :</label>
+                            <label id="lbl-xmatrix-loc" for="select-xmatrix-location">Type / Emplacement Jonction :</label>
                             <select id="select-xmatrix-location" class="select-custom">
                                 <option value="mid" selected>En milieu de ligne (Jonction X-Matrix)</option>
                                 <option value="end">En extrémité de ligne (Virage / Corner)</option>
@@ -167,7 +168,7 @@
 
             <div class="header-actions">
                 <button type="button" id="reconfig-btn" class="btn btn-secondary btn-sm" title="Modifier dimensions">
-                    <i class="fa-solid fa-pen-to-square"></i> Dimensions
+                    <i class="fa-solid fa-pen-to-square"></i> <span id="reconfig-btn-text">Dimensions</span>
                 </button>
                 <div class="lang-select-wrapper compact">
                     <i class="fa-solid fa-globe"></i>
@@ -187,16 +188,16 @@
                     <!-- Top canvas control toolbar -->
                     <div class="canvas-toolbar">
                         <div class="canvas-title-tag">
-                            <i class="fa-solid fa-cube"></i> Visualisation 3D / 2D
+                            <i class="fa-solid fa-cube"></i> <span id="canvas-title-text">Visualisation 3D / 2D</span>
                         </div>
 
                         <div class="view-mode-switch">
                             <button type="button" id="btn-view-3d" class="toolbar-btn active"
                                 title="Vue Perspective 3D">
-                                <i class="fa-solid fa-cube"></i> <span>3D</span>
+                                <i class="fa-solid fa-cube"></i> <span id="btn-view-3d-text">3D</span>
                             </button>
                             <button type="button" id="btn-view-2d" class="toolbar-btn" title="Vue Dessus 2D">
-                                <i class="fa-solid fa-border-all"></i> <span>2D Dessus</span>
+                                <i class="fa-solid fa-border-all"></i> <span id="btn-view-2d-text">2D Dessus</span>
                             </button>
                         </div>
 
@@ -226,10 +227,9 @@
 
                     <!-- Canvas Bottom Legend -->
                     <div class="canvas-legend">
-                        <div class="legend-item"><span class="legend-dot color-roof"></span> Roof Surface</div>
-                        <div class="legend-item"><span class="legend-dot color-anchor"></span> Potelets d'Ancrage</div>
-                        <div class="legend-item"><span class="legend-dot color-cable"></span> Câble de Ligne de Vie
-                        </div>
+                        <div class="legend-item"><span class="legend-dot color-roof"></span> <span id="legend-roof">Roof Surface</span></div>
+                        <div class="legend-item"><span class="legend-dot color-anchor"></span> <span id="legend-anchor">Potelets d'Ancrage</span></div>
+                        <div class="legend-item"><span class="legend-dot color-cable"></span> <span id="legend-cable">Câble de Ligne de Vie</span></div>
                     </div>
                 </div>
             </div>
@@ -243,34 +243,33 @@
                                 id="group-title-pieces">GAMME & COMPOSANTS HOOKT</span></h3>
 
                         <div class="system-cards-grid">
-                            <div class="system-card active" data-system="NEW PRO">
+                            <div class="system-card" data-system="NEW PRO">
                                 <div class="sys-card-header">
                                     <span class="sys-name">NEW PRO</span>
-                                    <span class="sys-span-tag">Max 15m</span>
+                                    <span class="sys-span-tag" id="sys-tag-newpro">Max 15m | 5 pers.</span>
                                 </div>
-                                <p class="sys-desc">Système haute performance avec absorbeurs intégrés pour bac acier et
+                                <p class="sys-desc" id="sys-desc-newpro">Système haute performance avec absorbeurs intégrés pour bac acier et
                                     béton.</p>
                             </div>
                             <div class="system-card" data-system="LIGHT PRO">
                                 <div class="sys-card-header">
                                     <span class="sys-name">LIGHT PRO</span>
-                                    <span class="sys-span-tag">Max 15m</span>
+                                    <span class="sys-span-tag" id="sys-tag-lightpro">Max 15m | 3 pers.</span>
                                 </div>
-                                <p class="sys-desc">Solution légère et économique pour toitures tertiaires et
+                                <p class="sys-desc" id="sys-desc-lightpro">Solution légère et économique pour toitures tertiaires et
                                     industrielles.</p>
                             </div>
                             <div class="system-card" data-system="LONG RANGE">
                                 <div class="sys-card-header">
-                                    <span class="sys-name">LONG RANGE</span>
-                                    <span class="sys-span-tag">Max 56m</span>
+                                    <span class="sys-name" id="sys-name-longrange">LONG / SUPER / ULTRA RANGE</span>
+                                    <span class="sys-span-tag" id="sys-tag-longrange">Max 56m | 3 pers.</span>
                                 </div>
-                                <p class="sys-desc">Ligne de vie pour très grandes portées sans ancrages intermédiaires
-                                    rapprochés.</p>
+                                <p class="sys-desc" id="sys-desc-longrange">Ligne de vie pour très grandes portées (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m).</p>
                             </div>
                         </div>
 
                         <div class="components-selector">
-                            <label class="section-label"><i class="fa-solid fa-square-check"></i> PIÈCES DU SYSTÈME
+                            <label class="section-label" id="lbl-components-selector"><i class="fa-solid fa-square-check"></i> PIÈCES DU SYSTÈME
                                 (COCHER POUR AFFICHER EN 3D) :</label>
                             <div id="components-list" class="components-cards-list">
                                 <!-- Dynamic component cards with checkboxes rendered by JS -->
@@ -280,24 +279,23 @@
 
                     <!-- Node Inspector Card (shown when an anchor node is selected) -->
                     <div id="node-inspector-card" class="control-card inspector-card hidden">
-                        <h3 class="card-title"><i class="fa-solid fa-circle-dot"></i> <span>INSPECTEUR & ORIENTATION
-                                3D</span></h3>
+                        <h3 class="card-title"><i class="fa-solid fa-circle-dot"></i> <span id="node-inspector-title">INSPECTEUR & ORIENTATION 3D</span></h3>
                         <div class="inspector-content">
                             <div class="readout-row">
-                                <span class="row-label">Potelet sélectionné :</span>
+                                <span class="row-label" id="lbl-node-id">Potelet sélectionné :</span>
                                 <span class="row-val" id="node-id-val">#1</span>
                             </div>
                             <div class="readout-row">
-                                <span class="row-label">Coordonnées ($X, Z$) :</span>
+                                <span class="row-label" id="lbl-node-coords">Coordonnées (X, Z) :</span>
                                 <span class="row-val" id="node-coords-val">X: 0.0m, Z: 0.0m</span>
                             </div>
                             <div class="readout-row">
-                                <span class="row-label">Distance au suivant :</span>
+                                <span class="row-label" id="lbl-node-span">Distance au suivant :</span>
                                 <span class="row-val" id="node-span-val">0.0m</span>
                             </div>
 
                             <div class="form-group margin-top-sm">
-                                <label for="node-type-select">Rôle du Potelet :</label>
+                                <label id="lbl-node-role" for="node-type-select">Rôle du Potelet :</label>
                                 <select id="node-type-select" class="select-custom">
                                     <option value="extremite">Ancrage d'Extrémité (avec Absorbeur)</option>
                                     <option value="intermediaire">Potelet Intermédiaire</option>
@@ -307,21 +305,21 @@
                             </div>
 
                             <div class="form-group margin-top-sm">
-                                <label for="node-comp-select">Modèle 3D HOOKT Assigné :</label>
+                                <label id="lbl-node-comp" for="node-comp-select">Modèle 3D HOOKT Assigné :</label>
                                 <select id="node-comp-select" class="select-custom">
                                     <!-- Populated dynamically -->
                                 </select>
                             </div>
 
                             <div class="form-group margin-top-sm">
-                                <label for="node-rot-slider"><i class="fa-solid fa-arrows-rotate"></i> Orientation 3D :
+                                <label id="lbl-node-rot" for="node-rot-slider"><i class="fa-solid fa-arrows-rotate"></i> <span id="lbl-node-rot-text">Orientation 3D :</span>
                                     <span id="node-rot-val" class="row-val">0°</span></label>
                                 <input type="range" id="node-rot-slider" min="0" max="360" value="0" step="5"
                                     class="select-custom">
                                 <div class="rot-quick-btns margin-top-sm">
                                     <button type="button" id="btn-rot-align-line" class="btn btn-secondary btn-sm"
                                         title="Aligner au câble">
-                                        <i class="fa-solid fa-compass"></i> Aligner Câble
+                                        <i class="fa-solid fa-compass"></i> <span id="btn-align-text">Aligner Câble</span>
                                     </button>
                                     <button type="button" id="btn-rot-90" class="btn btn-secondary btn-sm"
                                         title="Tourner +90°">
@@ -332,27 +330,10 @@
 
                             <button type="button" id="btn-delete-node"
                                 class="btn btn-secondary btn-full btn-sm margin-top-sm">
-                                <i class="fa-solid fa-trash-can"></i> Supprimer ce Potelet
+                                <i class="fa-solid fa-trash-can"></i> <span id="btn-delete-text">Supprimer ce Potelet</span>
                             </button>
                         </div>
                     </div>
-
-                    <!-- Section 2: Roof Texture Selection -->
-
-                    <div class="control-card">
-                        <h3 class="card-title"><i class="fa-solid fa-layer-group"></i> <span
-                                id="group-title-colors">REVÊTEMENT DE TOITURE</span></h3>
-
-                        <div class="form-group">
-                            <label for="select-roof-texture">Revêtement Toiture :</label>
-                            <select id="select-roof-texture" class="select-custom">
-                                <option value="bitumen" selected>Étanchéité Bitume Sombre (Terrasse)</option>
-                                <option value="metal">Bac Acier Nervuré (Gris Métal)</option>
-                                <option value="concrete">Dalle Béton Brute</option>
-                            </select>
-                        </div>
-                    </div>
-
 
                     <!-- Section 3: Compliance & Mechanical Calculations -->
                     <div class="control-card calc-card">
@@ -386,11 +367,11 @@
 
                             <div class="readout-grid-2col">
                                 <div class="readout-subbox">
-                                    <span class="sub-label">Facteur Chute :</span>
+                                    <span class="sub-label" id="lbl-fall-factor-calc">Facteur Chute :</span>
                                     <span class="sub-val" id="val-fall-factor">--</span>
                                 </div>
                                 <div class="readout-subbox">
-                                    <span class="sub-label">Portée Max Aut. :</span>
+                                    <span class="sub-label" id="lbl-max-allowed-span-calc">Portée Max Aut. :</span>
                                     <span class="sub-val" id="val-max-allowed-span">-- m</span>
                                 </div>
                             </div>
@@ -399,41 +380,41 @@
 
                             <!-- Single Lifeline Calculation Results -->
                             <div class="side-calc-block">
-                                <h4 class="side-title"><i class="fa-solid fa-route"></i> Résultats sur la Ligne de Vie
+                                <h4 class="side-title"><i class="fa-solid fa-route"></i> <span id="side-title-lifeline-text">Résultats sur la Ligne de Vie</span>
                                 </h4>
                                 <div class="readout-row">
-                                    <span class="row-label">Longueur développée :</span>
+                                    <span class="row-label" id="lbl-total-line-len-row">Longueur développée :</span>
                                     <span class="row-val" id="val-total-line-len">-- m</span>
                                 </div>
                                 <div class="readout-row">
-                                    <span class="row-label">Portée réelle max :</span>
+                                    <span class="row-label" id="lbl-span-l-row">Portée réelle max :</span>
                                     <span class="row-val" id="val-span-l">-- m</span>
                                 </div>
                                 <div class="readout-row warning-text">
-                                    <span class="row-label">Effort longe :</span>
+                                    <span class="row-label" id="lbl-force-l-row">Effort longe :</span>
                                     <span class="row-val" id="val-force-l">-- kN</span>
                                 </div>
                                 <div class="readout-row warning-yellow">
-                                    <span class="row-label">Flèche maximale :</span>
+                                    <span class="row-label" id="lbl-defl-l-row">Flèche maximale :</span>
                                     <span class="row-val" id="val-defl-l">-- mm</span>
                                 </div>
                                 <div class="readout-row">
-                                    <span class="row-label">Force Extrémité 1 :</span>
+                                    <span class="row-label" id="lbl-ext1-l-row">Force Extrémité 1 :</span>
                                     <span class="row-val" id="val-ext1-l">-- kN</span>
                                 </div>
                                 <div class="readout-row">
-                                    <span class="row-label">Force Extrémité 2 :</span>
+                                    <span class="row-label" id="lbl-ext2-l-row">Force Extrémité 2 :</span>
                                     <span class="row-val" id="val-ext2-l">-- kN</span>
                                 </div>
                                 <div class="readout-row" id="row-ext3" style="display: none;">
-                                    <span class="row-label">Force Ancrage 3 :</span>
+                                    <span class="row-label" id="lbl-ext3-l-row">Force Ancrage 3 :</span>
                                     <span class="row-val" id="val-ext3-l">-- kN</span>
                                 </div>
                                 <div class="readout-row" id="row-ext4" style="display: none;">
-                                    <span class="row-label">Force Ancrage 4 :</span>
+                                    <span class="row-label" id="lbl-ext4-l-row">Force Ancrage 4 :</span>
                                     <span class="row-val" id="val-ext4-l">-- kN</span>
                                 </div>
-                            </div>
+                                </div>
                         </div>
 
 
