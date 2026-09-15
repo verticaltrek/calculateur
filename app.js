@@ -6,6 +6,8 @@
 // Global Application State
 const state = {
     lineLength: 15.0,     // Desired Lifeline Length L1 (m)
+    spanMode: "standard", // Span mode ("standard" = automatic maxSpan, "custom" = user input span)
+    customSpan: 5.0,      // User-entered Custom Span target (m)
     hasLine2: false,      // Secondary direction line flag
     line2Length: 10.0,    // Secondary Line Length L2 (m)
     xMatrixLocation: "mid",// X-Matrix junction location ("mid" = midpoint, "end" = end of line 1)
@@ -81,6 +83,9 @@ function populateConfigModalInputs() {
     const l1Elem = document.getElementById("input-line-length");
     const l2Elem = document.getElementById("input-line2-length");
     const slopeElem = document.getElementById("input-roof-slope");
+    const spanModeElem = document.getElementById("input-span-mode");
+    const customSpanElem = document.getElementById("input-custom-span");
+    const groupCustomSpan = document.getElementById("group-custom-span");
     if (l1Elem) {
         l1Elem.value = isEn ? (state.lineLength * METERS_TO_INCHES).toFixed(2) : state.lineLength;
         l1Elem.min = isEn ? "78.74" : "2";
@@ -96,6 +101,18 @@ function populateConfigModalInputs() {
     if (slopeElem) {
         slopeElem.value = state.roofSlope !== undefined ? state.roofSlope : 0;
         slopeElem.step = "any";
+    }
+    if (spanModeElem) {
+        spanModeElem.value = state.spanMode || "standard";
+    }
+    if (customSpanElem) {
+        customSpanElem.value = isEn ? ((state.customSpan || 5.0) * METERS_TO_INCHES).toFixed(2) : (state.customSpan || 5.0);
+        customSpanElem.min = isEn ? "3.937" : "0.1";
+        customSpanElem.max = isEn ? "78740" : "20000";
+        customSpanElem.step = "any";
+    }
+    if (groupCustomSpan) {
+        groupCustomSpan.style.display = (state.spanMode === "custom") ? "block" : "none";
     }
 }
 
@@ -126,6 +143,12 @@ const TRANSLATIONS = {
         triangle: ["Toit Triangulaire (Pignon / Double Pente)", "Gabled / Triangular Roof", "Techo Triangular (A dos aguas)"]
     },
     lblSlope: ["Pente du toit :", "Roof Slope:", "Pendiente del techo:"],
+    lblSpanMode: ["Mode de Portée :", "Span Mode:", "Modo de Luz:"],
+    spanModes: {
+        standard: ["Standard (Automatique)", "Standard (Automatic)", "Estándar (Automático)"],
+        custom: ["Personnalisé (Saisie de portée)", "Custom (Manual span)", "Personalizado (Entrada de luz)"]
+    },
+    lblCustomSpan: ["Portée personnalisée :", "Custom Span:", "Luz Personalizada:"],
     lblLineLen: ["Longueur Ligne de Vie :", "Lifeline Length:", "Longitud Línea de Vida:"],
     lblUsers: ["Nombre d'utilisateurs max :", "Max Active Users:", "Número máx. de usuarios:"],
     lblChute: ["Facteur de chute :", "Fall Factor:", "Factor de Caída:"],
@@ -454,6 +477,25 @@ function applyLanguage(langIndex) {
 
     const lblSlope = document.getElementById("lbl-slope");
     if (lblSlope) lblSlope.textContent = TRANSLATIONS.lblSlope[l];
+
+    const lblSpanMode = document.getElementById("lbl-span-mode");
+    if (lblSpanMode) lblSpanMode.textContent = TRANSLATIONS.lblSpanMode[l];
+
+    const inputSpanMode = document.getElementById("input-span-mode");
+    if (inputSpanMode) {
+        Array.from(inputSpanMode.options).forEach(opt => {
+            if (TRANSLATIONS.spanModes[opt.value]) {
+                opt.textContent = TRANSLATIONS.spanModes[opt.value][l];
+            }
+        });
+    }
+
+    const lblCustomSpan = document.getElementById("lbl-custom-span");
+    if (lblCustomSpan) lblCustomSpan.textContent = TRANSLATIONS.lblCustomSpan[l];
+
+    const unitCustomSpan = document.getElementById("unit-custom-span");
+    if (unitCustomSpan) unitCustomSpan.textContent = (l === 1) ? "in" : "m";
+
     const lblLineLen = document.getElementById("lbl-line-len");
     if (lblLineLen) lblLineLen.textContent = TRANSLATIONS.lblLineLen[l];
     const lblUsers = document.getElementById("lbl-users");
@@ -859,6 +901,9 @@ const Calculator = {
     },
 
     calculateAnchorPositions: function (L, l, maxSpan) {
+        const activeSpan = (state.spanMode === "custom")
+            ? Math.min(Math.max(0.1, state.customSpan || 5.0), maxSpan)
+            : maxSpan;
         const lineLenTotal = state.lineLength;
         const marginPerEnd = (state.product === "LONG RANGE") ? 0.30 : 0.20;
         const lineLen = Math.max(0.5, lineLenTotal);
@@ -874,7 +919,7 @@ const Calculator = {
             const startZ = 3.0 + marginPerEnd * Math.cos(slopeRad);
             const xPos = state.hasLine2 ? (state.L - state.line2Length) / 2 : state.L / 2;
             const line1Nodes = [];
-            const intCount1 = Math.max(1, Math.ceil(lineLen / maxSpan));
+            const intCount1 = Math.max(1, Math.ceil(lineLen / activeSpan));
             const step1Ground = line1LenGround / intCount1;
 
             for (let i = 0; i <= intCount1; i++) {
@@ -895,7 +940,7 @@ const Calculator = {
                 const endZ = startZ + line1LenGround;
                 const line2LenTotal = state.line2Length;
                 const line2Len = Math.max(0.5, line2LenTotal);
-                const intCount2 = Math.max(1, Math.ceil(line2Len / maxSpan));
+                const intCount2 = Math.max(1, Math.ceil(line2Len / activeSpan));
                 const step2 = line2Len / intCount2;
 
                 for (let j = 1; j <= intCount2; j++) {
@@ -955,7 +1000,7 @@ const Calculator = {
 
                 // Line 1 nodes (from startX to cornerX - cornerR)
                 const line1LenActual = lineLen - cornerR;
-                const intCount1 = Math.max(1, Math.ceil(line1LenActual / maxSpan));
+                const intCount1 = Math.max(1, Math.ceil(line1LenActual / activeSpan));
                 const step1 = line1LenActual / intCount1;
 
                 for (let i = 0; i < intCount1; i++) {
@@ -996,7 +1041,7 @@ const Calculator = {
                     if (line2LenActual <= 0) {
                         line2Nodes[0].type = "extremite";
                     } else {
-                        const intCountL2 = Math.max(1, Math.ceil(line2LenActual / maxSpan));
+                        const intCountL2 = Math.max(1, Math.ceil(line2LenActual / activeSpan));
                         const stepL2 = line2LenActual / intCountL2;
 
                         for (let j = 1; j <= intCountL2; j++) {
@@ -1032,7 +1077,7 @@ const Calculator = {
                 const left3mX = xj - 3.0;
                 if (left3mX > startX + 0.5) {
                     const seg1Len = left3mX - startX;
-                    const intCount1 = Math.max(1, Math.ceil(seg1Len / maxSpan));
+                    const intCount1 = Math.max(1, Math.ceil(seg1Len / activeSpan));
                     const step1 = seg1Len / intCount1;
                     for (let k = 1; k < intCount1; k++) {
                         const xk = startX + k * step1;
@@ -1050,7 +1095,7 @@ const Calculator = {
                 if (right3mX < endX - 0.5) {
                     line1Nodes.push({ x: parseFloat(right3mX.toFixed(2)), y: 0.0, z: parseFloat(zPos.toFixed(2)), type: "intermediaire", line: 1 });
                     const seg2Len = endX - right3mX;
-                    const intCount2 = Math.max(1, Math.ceil(seg2Len / maxSpan));
+                    const intCount2 = Math.max(1, Math.ceil(seg2Len / activeSpan));
                     const step2 = seg2Len / intCount2;
                     for (let k = 1; k < intCount2; k++) {
                         const xk = right3mX + k * step2;
@@ -1071,7 +1116,7 @@ const Calculator = {
                     } else {
                         line2Nodes.push({ x: jNode.x, y: 0.0, z: parseFloat((jNode.z + 3.0).toFixed(2)), type: "intermediaire", rotY: (3 * Math.PI) / 2, line: 2 });
                         const remLen = line2Len - 3.0;
-                        const intCountL2 = Math.max(1, Math.ceil(remLen / maxSpan));
+                        const intCountL2 = Math.max(1, Math.ceil(remLen / activeSpan));
                         const stepL2 = remLen / intCountL2;
 
                         for (let j = 1; j <= intCountL2; j++) {
@@ -1097,6 +1142,8 @@ const Calculator = {
             let intCount1 = 1;
             if (state.product === "LONG RANGE" || state.product === "LongRange") {
                 intCount1 = 1; // Long Range strictly uses 2 anchors (0 intermediate anchors) under all standards
+            } else if (state.spanMode === "custom") {
+                intCount1 = Math.max(1, Math.ceil(lineLen / activeSpan));
             } else {
                 intCount1 = (lineLen < 12.0) ? 1 : Math.max(1, Math.ceil(lineLen / maxSpan));
             }
@@ -1212,20 +1259,23 @@ const Calculator = {
             let k_FC = fallFactor <= 0.0 ? 0.5 : (fallFactor < 1.0 ? 0.5 + fallFactor * (Math.sqrt(0.5) - 0.5) : (fallFactor < 2.0 ? Math.sqrt(0.5) + (fallFactor - 1.0) * (1.0 - Math.sqrt(0.5)) : 1.0));
             const u = Math.max(1, Math.min(5, nbUsers));
             const F_user = 1.37 * u + 4.65;
+            let res = F_user * k_FC;
             if (product === "NEW PRO") {
-                const spanClamped = Math.max(3.0, Math.min(15.2, span));
-                const spanRatio = (15.2 - spanClamped) / (15.2 - 3.0);
+                const spanClamped = Math.max(0.1, Math.min(15.2, span));
+                const spanRatio = (15.2 - Math.max(3.0, spanClamped)) / (15.2 - 3.0);
                 let k_support = 1.0;
                 if (support === "omega") k_support = 5.0 / 5.7;
                 else if (support === "sol_mur") k_support = 6.4 / 5.7;
                 else if (support === "overhead") k_support = 7.2 / 5.7;
-                return F_user * (5.7 / 11.5) * k_support * k_FC * (1.0 + 0.15 * spanRatio);
-            }
-            if (product === "LIGHT PRO" && span <= 3.5) {
+                res = F_user * (5.7 / 11.5) * k_support * k_FC * (1.0 + 0.15 * spanRatio);
+            } else if (product === "LIGHT PRO" && span <= 3.5) {
                 const fmax_base = u === 1 ? 5.0 : (u === 2 ? 5.8 : 6.5);
-                return fmax_base * k_FC;
+                res = fmax_base * k_FC;
             }
-            return F_user * k_FC;
+            if (span < 3.0) {
+                res = res * Math.max(0.5, Math.sqrt(span / 3.0));
+            }
+            return res;
         }
 
         if (fallFactor <= 0.0) return 1.0 * nbUsers;
@@ -1242,6 +1292,9 @@ const Calculator = {
             if (rec_3 && rec_15) {
                 const t = Math.max(0.0, Math.min(1.0, (span - 3.0) / 12.0));
                 fancre_ref = rec_3.fmax_ancre + t * (rec_15.fmax_ancre - rec_3.fmax_ancre);
+                if (span < 3.0) {
+                    fancre_ref = fancre_ref * Math.max(0.5, Math.sqrt(span / 3.0));
+                }
             } else fancre_ref = 5.10;
         }
 
@@ -1254,21 +1307,24 @@ const Calculator = {
             let k_FC = fallFactor <= 0.0 ? 0.5 : (fallFactor < 1.0 ? 0.5 + fallFactor * (Math.sqrt(0.5) - 0.5) : (fallFactor < 2.0 ? Math.sqrt(0.5) + (fallFactor - 1.0) * (1.0 - Math.sqrt(0.5)) : 1.0));
             const u = Math.max(1, Math.min(5, nbUsers));
             const F_user = 1.37 * u + 4.65;
+            let res = 500.0;
             if (product === "NEW PRO") {
-                const spanRatio = Math.max(2.0, Math.min(15.2, span)) / 15.2;
+                const spanRatio = Math.max(0.1, Math.min(15.2, span)) / 15.2;
                 let k_support = support === "omega" ? 1290 / 1410 : (support === "sol_mur" ? 1300 / 1410 : (support === "overhead" ? 1640 / 1410 : 1.0));
-                return (isMultiSpan ? 1530.0 : 2200.0) * spanRatio * (F_user / 11.5) * k_support * k_FC;
+                res = (isMultiSpan ? 1530.0 : 2200.0) * spanRatio * (F_user / 11.5) * k_support * k_FC;
             } else if (product === "LIGHT PRO") {
                 if (span <= 3.5) {
-                    return Math.round(675.0 * k_FC);
+                    res = 675.0 * (span / 3.5) * k_FC;
+                } else {
+                    const spanRatio = Math.max(0.1, Math.min(12.2, span)) / 12.2;
+                    let f_ref = support === "hookt" ? (isMultiSpan ? 2250.0 : 2600.0) : (isMultiSpan ? 1500.0 : 1800.0);
+                    res = f_ref * spanRatio * (F_user / 8.8) * k_FC;
                 }
-                const spanRatio = Math.max(2.0, Math.min(12.2, span)) / 12.2;
-                let f_ref = support === "hookt" ? (isMultiSpan ? 2250.0 : 2600.0) : (isMultiSpan ? 1500.0 : 1800.0);
-                return f_ref * spanRatio * (F_user / 8.8) * k_FC;
             } else if (product === "LONG RANGE" || product === "LongRange") {
-                const spanRatio = Math.max(10.0, Math.min(54.9, span)) / 54.9;
-                return (isMultiSpan ? 1510.0 : 2790.0) * spanRatio * (F_user / 8.8) * k_FC;
+                const spanRatio = Math.max(0.1, Math.min(54.9, span)) / 54.9;
+                res = (isMultiSpan ? 1510.0 : 2790.0) * spanRatio * (F_user / 8.8) * k_FC;
             }
+            return Math.round(res);
         }
 
         let k_fleche_fc = fallFactor >= 2.0 ? 1.0 : (fallFactor === 1.0 ? Math.sqrt(0.5) : (fallFactor > 0.0 ? 0.50 + fallFactor * (Math.sqrt(0.5) - 0.50) : 0.50));
@@ -1302,7 +1358,13 @@ const Calculator = {
             if (rec_3 && rec_15) {
                 const t = Math.max(0.0, Math.min(1.0, (span - 3.0) / 12.0));
                 let fleche_pred = Math.max(10.0, rec_3.fleche + t * (rec_15.fleche - rec_3.fleche));
+                if (span < 3.0) {
+                    fleche_pred = fleche_pred * Math.max(0.1, span / 3.0);
+                }
                 let fancre_ref = rec_3.fmax_ancre + t * (rec_15.fmax_ancre - rec_3.fmax_ancre);
+                if (span < 3.0) {
+                    fancre_ref = fancre_ref * Math.max(0.5, Math.sqrt(span / 3.0));
+                }
                 return Math.round(fleche_pred * k_fleche_fc * Math.sqrt(fancre_ref > 0.0 ? Math.max(0.0, fmax_ancre_calc / fancre_ref) : 1.0));
             }
             return 500.0;
@@ -1314,17 +1376,25 @@ const Calculator = {
             let k_FC = fallFactor <= 0.0 ? 0.5 : (fallFactor < 1.0 ? 0.5 + fallFactor * (Math.sqrt(0.5) - 0.5) : (fallFactor < 2.0 ? Math.sqrt(0.5) + (fallFactor - 1.0) * (1.0 - Math.sqrt(0.5)) : 1.0));
             const u = Math.max(1, Math.min(5, nbUsers));
             const F_user = 1.37 * u + 4.65;
-            if (product === "NEW PRO") return (isMultiSpan ? 13.05 : 12.50) * (F_user / 11.5) * k_FC;
-            if (product === "LIGHT PRO") {
+            let baseForce = 10.0;
+            if (product === "NEW PRO") {
+                baseForce = (isMultiSpan ? 13.05 : 12.50) * (F_user / 11.5) * k_FC;
+            } else if (product === "LIGHT PRO") {
                 if (span <= 3.5) {
                     const lc1_base = u === 1 ? 5.4 : (u === 2 ? 6.1 : 6.8);
-                    return lc1_base * k_FC;
+                    baseForce = lc1_base * k_FC;
+                } else {
+                    const spanRatio = 1.0 + (support === "hookt" ? 0.10 : 0.12) * ((12.2 - Math.max(2.0, Math.min(12.2, span))) / (12.2 - 2.0));
+                    let fext1_ref = support === "hookt" ? (isMultiSpan ? 8.30 : 9.00) : (isMultiSpan ? 13.65 : 11.60);
+                    baseForce = fext1_ref * (F_user / 8.8) * spanRatio * k_FC;
                 }
-                const spanRatio = 1.0 + (support === "hookt" ? 0.10 : 0.12) * ((12.2 - Math.max(2.0, Math.min(12.2, span))) / (12.2 - 2.0));
-                let fext1_ref = support === "hookt" ? (isMultiSpan ? 8.30 : 9.00) : (isMultiSpan ? 13.65 : 11.60);
-                return fext1_ref * (F_user / 8.8) * spanRatio * k_FC;
+            } else if (product === "LONG RANGE" || product === "LongRange") {
+                baseForce = (isMultiSpan ? 10.40 : 19.30) * (F_user / 8.8) * k_FC;
             }
-            if (product === "LONG RANGE" || product === "LongRange") return (isMultiSpan ? 10.40 : 19.30) * (F_user / 8.8) * k_FC;
+            if (span < 3.0) {
+                baseForce = baseForce * Math.sqrt(Math.max(0.1, span / 3.0));
+            }
+            return baseForce;
         }
 
         if (product === "LIGHT PRO") {
@@ -1340,6 +1410,9 @@ const Calculator = {
                 const t = Math.max(0.0, Math.min(1.0, (span - 3.0) / 12.0));
                 let fancre_ref = rec_3.fmax_ancre + t * (rec_15.fmax_ancre - rec_3.fmax_ancre);
                 let fext1_ref_base = rec_3.force_ext1 + t * (rec_15.force_ext1 - rec_3.force_ext1);
+                if (span < 3.0) {
+                    fext1_ref_base = fext1_ref_base * Math.sqrt(Math.max(0.1, span / 3.0));
+                }
                 const currentEffort = (effortLonge > 0.0) ? effortLonge : this.effortLonge(product, span, nbUsers, norm, fallFactor, support, isMultiSpan);
                 return fext1_ref_base * (fancre_ref > 0.0 ? currentEffort / fancre_ref : 1.0) + (fallFactor <= 0.0 ? 1.0 : 0.0);
             }
@@ -1366,17 +1439,25 @@ const Calculator = {
             let k_FC = fallFactor <= 0.0 ? 0.5 : (fallFactor < 1.0 ? 0.5 + fallFactor * (Math.sqrt(0.5) - 0.5) : (fallFactor < 2.0 ? Math.sqrt(0.5) + (fallFactor - 1.0) * (1.0 - Math.sqrt(0.5)) : 1.0));
             const u = Math.max(1, Math.min(5, nbUsers));
             const F_user = 1.37 * u + 4.65;
-            if (product === "NEW PRO") return (isMultiSpan ? 12.55 : 12.05) * (F_user / 11.5) * k_FC;
-            if (product === "LIGHT PRO") {
+            let baseForce = 10.0;
+            if (product === "NEW PRO") {
+                baseForce = (isMultiSpan ? 12.55 : 12.05) * (F_user / 11.5) * k_FC;
+            } else if (product === "LIGHT PRO") {
                 if (span <= 3.5) {
                     const lc2_base = u === 1 ? 5.8 : (u === 2 ? 6.5 : 7.2);
-                    return lc2_base * k_FC;
+                    baseForce = lc2_base * k_FC;
+                } else {
+                    const spanRatio = 1.0 + (support === "hookt" ? 0.10 : 0.12) * ((12.2 - Math.max(2.0, Math.min(12.2, span))) / (12.2 - 2.0));
+                    let fext2_ref = support === "hookt" ? (isMultiSpan ? 8.10 : 9.00) : (isMultiSpan ? 13.05 : 11.30);
+                    baseForce = fext2_ref * (F_user / 8.8) * spanRatio * k_FC;
                 }
-                const spanRatio = 1.0 + (support === "hookt" ? 0.10 : 0.12) * ((12.2 - Math.max(2.0, Math.min(12.2, span))) / (12.2 - 2.0));
-                let fext2_ref = support === "hookt" ? (isMultiSpan ? 8.10 : 9.00) : (isMultiSpan ? 13.05 : 11.30);
-                return fext2_ref * (F_user / 8.8) * spanRatio * k_FC;
+            } else if (product === "LONG RANGE" || product === "LongRange") {
+                baseForce = (isMultiSpan ? 10.20 : 18.95) * (F_user / 8.8) * k_FC;
             }
-            if (product === "LONG RANGE" || product === "LongRange") return (isMultiSpan ? 10.20 : 18.95) * (F_user / 8.8) * k_FC;
+            if (span < 3.0) {
+                baseForce = baseForce * Math.sqrt(Math.max(0.1, span / 3.0));
+            }
+            return baseForce;
         }
 
         if (product === "LIGHT PRO") {
@@ -1392,6 +1473,9 @@ const Calculator = {
                 const t = Math.max(0.0, Math.min(1.0, (span - 3.0) / 12.0));
                 let fancre_ref = rec_3.fmax_ancre + t * (rec_15.fmax_ancre - rec_3.fmax_ancre);
                 let fext2_ref_base = rec_3.force_ext2 + t * (rec_15.force_ext2 - rec_3.force_ext2);
+                if (span < 3.0) {
+                    fext2_ref_base = fext2_ref_base * Math.sqrt(Math.max(0.1, span / 3.0));
+                }
                 const currentEffort = (effortLonge > 0.0) ? effortLonge : this.effortLonge(product, span, nbUsers, norm, fallFactor, support, isMultiSpan);
                 return fext2_ref_base * (fancre_ref > 0.0 ? currentEffort / fancre_ref : 1.0) + (fallFactor <= 0.0 ? 1.0 : 0.0);
             }
@@ -3046,6 +3130,14 @@ function setupUIEventListeners() {
         });
     }
 
+    const spanModeSelectElem = document.getElementById("input-span-mode");
+    const groupCustomSpanElem = document.getElementById("group-custom-span");
+    if (spanModeSelectElem && groupCustomSpanElem) {
+        spanModeSelectElem.addEventListener("change", (e) => {
+            groupCustomSpanElem.style.display = (e.target.value === "custom") ? "block" : "none";
+        });
+    }
+
     const chkLine2 = document.getElementById("input-has-line2");
     const groupLine2 = document.getElementById("group-line2-options");
     const selectXLoc = document.getElementById("select-xmatrix-location");
@@ -3096,6 +3188,19 @@ function setupUIEventListeners() {
             state.lineLength = (parseInt(state.lang) === 1) ? (rawL1 / METERS_TO_INCHES) : rawL1;
         } else {
             state.lineLength = 15.0;
+        }
+
+        const spanModeSelect = document.getElementById("input-span-mode");
+        state.spanMode = spanModeSelect ? spanModeSelect.value : "standard";
+
+        if (state.spanMode === "custom") {
+            const rawCustomSpanStr = (document.getElementById("input-custom-span").value || "").toString().replace(',', '.');
+            const rawCustomSpan = parseFloat(rawCustomSpanStr);
+            if (!isNaN(rawCustomSpan) && rawCustomSpan > 0) {
+                state.customSpan = (parseInt(state.lang) === 1) ? (rawCustomSpan / METERS_TO_INCHES) : rawCustomSpan;
+            } else {
+                state.customSpan = 5.0;
+            }
         }
 
         let requestedUsers = parseInt(document.getElementById("input-users").value) || 1;

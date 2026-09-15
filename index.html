@@ -93,6 +93,25 @@
                         </div>
                     </div>
 
+                    <!-- Mode de Portée (Standard vs Personnalisé) -->
+                    <div class="form-group">
+                        <label id="lbl-span-mode" for="input-span-mode">Mode de Portée :</label>
+                        <select id="input-span-mode" class="select-custom">
+                            <option value="standard" selected>Standard (Automatique)</option>
+                            <option value="custom">Personnalisé (Saisie de portée)</option>
+                        </select>
+                    </div>
+
+                    <!-- Portée Personnalisée (affiché uniquement en mode personnalisé) -->
+                    <div class="form-group" id="group-custom-span" style="display: none;">
+                        <label id="lbl-custom-span" for="input-custom-span">Portée personnalisée :</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="input-custom-span" min="0.1" max="20000" value="5.0" step="any">
+                            <span class="unit" id="unit-custom-span">m</span>
+                        </div>
+                    </div>
+
+
                     <!-- Active users -->
                     <div class="form-group">
                         <label id="lbl-users" for="input-users">Nombre d'utilisateurs max :</label>
