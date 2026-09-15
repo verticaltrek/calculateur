@@ -12,7 +12,7 @@ const state = {
     L: 21.0,              // Roof Length (m)
     l: 12.0,              // Roof Width (m)
     roofShape: "flat",    // Roof Shape ("flat", "sloped", "triangle")
-    roofSlope: 15,        // Slope angle in degrees
+    roofSlope: 0,         // Slope angle in degrees
     nbUsers: 1,           // Max Active Users
     fallFactor: 1,        // Fall Factor (0, 1, 2)
     product: null,        // HOOKT Product Family ("NEW PRO", "LIGHT PRO", "LONG RANGE", or null until user selects)
@@ -38,6 +38,66 @@ const state = {
         cable: "#f8fafc"
     }
 };
+
+// ==========================================
+// UNIT CONVERSION ENGINE (METRIC <-> IMPERIAL INCHES)
+// ==========================================
+const METERS_TO_INCHES = 39.37007874;
+
+function getDistanceUnit(lang = state.lang) {
+    return (parseInt(lang) === 1) ? "in" : "m";
+}
+
+function convertDistance(meters, lang = state.lang) {
+    if (parseInt(lang) === 1) {
+        return meters * METERS_TO_INCHES;
+    }
+    return meters;
+}
+
+function formatDistance(meters, decimals = 2, lang = state.lang) {
+    if (meters === null || meters === undefined || isNaN(meters)) {
+        return `-- ${getDistanceUnit(lang)}`;
+    }
+    const val = convertDistance(meters, lang);
+    const unit = getDistanceUnit(lang);
+    return `${val.toFixed(decimals)} ${unit}`;
+}
+
+function formatDeflection(mm, lang = state.lang) {
+    if (mm === null || mm === undefined || isNaN(mm)) {
+        return (parseInt(lang) === 1) ? "-- in" : "-- mm";
+    }
+    if (parseInt(lang) === 1) {
+        const inches = (mm / 1000.0) * METERS_TO_INCHES;
+        return `${inches.toFixed(2)} in`;
+    }
+    const isOSHA = (state.norm === "OSHA/ANSI" || state.norm === "OSHA" || state.norm === "ANSI");
+    return isOSHA ? `${mm.toFixed(2)} mm` : `${Math.round(mm)} mm`;
+}
+
+function populateConfigModalInputs() {
+    const isEn = parseInt(state.lang) === 1;
+    const l1Elem = document.getElementById("input-line-length");
+    const l2Elem = document.getElementById("input-line2-length");
+    const slopeElem = document.getElementById("input-roof-slope");
+    if (l1Elem) {
+        l1Elem.value = isEn ? (state.lineLength * METERS_TO_INCHES).toFixed(2) : state.lineLength;
+        l1Elem.min = isEn ? "78.74" : "2";
+        l1Elem.max = isEn ? "19685" : "500";
+        l1Elem.step = "any";
+    }
+    if (l2Elem) {
+        l2Elem.value = isEn ? (state.line2Length * METERS_TO_INCHES).toFixed(2) : state.line2Length;
+        l2Elem.min = isEn ? "78.74" : "2";
+        l2Elem.max = isEn ? "7874" : "200";
+        l2Elem.step = "any";
+    }
+    if (slopeElem) {
+        slopeElem.value = state.roofSlope !== undefined ? state.roofSlope : 0;
+        slopeElem.step = "any";
+    }
+}
 
 // ==========================================
 // INTERNATIONALIZATION (i18n) ENGINE
@@ -102,14 +162,14 @@ const TRANSLATIONS = {
         longRange: ["LONG / SUPER / ULTRA RANGE", "LONG / SUPER / ULTRA RANGE", "LONG / SUPER / ULTRA RANGE"]
     },
     sysTags: {
-        newPro: ["Max 15m | 5 pers.", "Max 15m | 5 users", "Máx 15m | 5 pers."],
-        lightPro: ["Max 15m | 3 pers.", "Max 15m | 3 users", "Máx 15m | 3 pers."],
-        longRange: ["Max 56m | 3 pers.", "Max 56m | 3 users", "Máx 56m | 3 pers."]
+        newPro: ["Max 15m | 5 pers.", "Max 590.55 in | 5 users", "Máx 15m | 5 pers."],
+        lightPro: ["Max 15m | 3 pers.", "Max 590.55 in | 3 users", "Máx 15m | 3 pers."],
+        longRange: ["Max 56m | 3 pers.", "Max 2204.72 in | 3 users", "Máx 56m | 3 pers."]
     },
     sysDescs: {
         newPro: ["Système haute performance avec absorbeurs intégrés pour bac acier et béton.", "High-performance system with integrated absorbers for trapezoidal sheet and concrete.", "Sistema de alto rendimiento con absorbedores integrados para chapa y hormigón."],
         lightPro: ["Solution légère et économique pour toitures tertiaires et industrielles.", "Lightweight and economical solution for commercial and industrial roofs.", "Solución ligera y económica para cubiertas comerciales e industriales."],
-        longRange: ["Ligne de vie pour très grandes portées (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m).", "Lifeline for long spans (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m).", "Línea de vida para grandes luces (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m)."]
+        longRange: ["Ligne de vie pour très grandes portées (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m).", "Lifeline for long spans (Long Range 393.7-787.4 in, Super Range 787.4-1338.58 in, Ultra Range 1338.58-2204.72 in).", "Línea de vida para grandes luces (Long Range 10-20m, Super Range 20-34m, Ultra Range 34-56m)."]
     },
     lblComponentsSelector: ["PIÈCES DU SYSTÈME (COCHER POUR AFFICHER EN 3D) :", "SYSTEM COMPONENTS (CHECK TO DISPLAY IN 3D):", "PIEZAS DEL SISTEMA (MARCAR PARA MOSTRAR EN 3D):"],
     emptyStateTitle: ["Veuillez choisir un système HOOKT ci-dessus", "Please choose a HOOKT system above", "Por favor elija un sistema HOOKT arriba"],
@@ -227,7 +287,7 @@ const TRANSLATIONS = {
         ],
         longRangeLengthRange: [
             "⚠️ LONGUEUR DE LIGNE NON CONFORME :\nPour le système LONG RANGE, vous devez choisir une longueur de ligne entre 10 et 56 m.",
-            "⚠️ NON-COMPLIANT LINE LENGTH:\nFor the LONG RANGE system, line length must be between 10 and 56 m.",
+            "⚠️ NON-COMPLIANT LINE LENGTH:\nFor the LONG RANGE system, line length must be between 393.7 and 2204.72 in.",
             "⚠️ LONGITUD DE LÍNEA NO CONFORME:\nPara el sistema LONG RANGE, la longitud de la línea debe estar entre 10 y 56 m."
         ],
         pdfLoading: [
@@ -551,9 +611,18 @@ function applyLanguage(langIndex) {
     const carouselTitle = document.getElementById("carousel-title");
     if (carouselTitle) carouselTitle.textContent = TRANSLATIONS.carouselTitle[l];
 
+    const unitLineLen = document.getElementById("unit-line-len");
+    if (unitLineLen) unitLineLen.textContent = (l === 1) ? "in" : "m";
+    const unitLine2Len = document.getElementById("unit-line2-len");
+    if (unitLine2Len) unitLine2Len.textContent = (l === 1) ? "in" : "m";
+    populateConfigModalInputs();
+
     renderComponentsChecklist();
     if (typeof update3DScene === "function" && state.product) {
         update3DScene();
+    } else if (state.product) {
+        const activePositions = Calculator.calculateAnchorPositions(state.L, state.l, Calculator.getMaxSpan(state.product));
+        updateCalculationsUI(activePositions, Calculator.getMaxSpan(state.product));
     }
 }
 
@@ -796,7 +865,7 @@ const Calculator = {
 
         // On sloped mono-pitch roof, Line 1 runs along Z (slope direction)
         if (state.roofShape === "sloped") {
-            const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
+            const slopeRad = (state.roofSlope || 0) * (Math.PI / 180);
             const line1LenGround = lineLen * Math.cos(slopeRad);
 
             state.l = lineLenTotal * Math.cos(slopeRad) + 6.0;
@@ -1561,14 +1630,14 @@ function highlightSelectedNode() {
     if (card) {
         card.classList.remove("hidden");
         document.getElementById("node-id-val").textContent = `#${state.selectedNodeIndex + 1}`;
-        document.getElementById("node-coords-val").textContent = `X: ${node.x}m, Z: ${node.z}m`;
+        document.getElementById("node-coords-val").textContent = `X: ${formatDistance(node.x, 2, state.lang)}, Z: ${formatDistance(node.z, 2, state.lang)}`;
 
         let nextSpan = 0.0;
         if (state.selectedNodeIndex < activePositions.length - 1) {
             const next = activePositions[state.selectedNodeIndex + 1];
             nextSpan = Math.sqrt(Math.pow(node.x - next.x, 2) + Math.pow(node.z - next.z, 2));
         }
-        document.getElementById("node-span-val").textContent = `${nextSpan.toFixed(2)}m`;
+        document.getElementById("node-span-val").textContent = formatDistance(nextSpan, 2, state.lang);
         document.getElementById("node-type-select").value = node.type || "intermediaire";
 
         // Update component selection dropdown
@@ -1602,7 +1671,7 @@ function updatePreviewCable() {
     const lastPt = state.customPoints[state.customPoints.length - 1];
     const lastRoofY = getRoofHeightAt(lastPt.x, lastPt.z);
 
-    const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
+    const slopeRad = (state.roofSlope || 0) * (Math.PI / 180);
     let rotX = 0;
     if (state.roofShape === "sloped") {
         rotX = -slopeRad;
@@ -1962,7 +2031,7 @@ function createAnchorMesh(colorHex, nodeType = "intermediaire", compId = null, r
 
 // Helper: Calculate exact Roof Height at any (x, z) coordinate
 function getRoofHeightAt(x, z) {
-    const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
+    const slopeRad = (state.roofSlope || 0) * (Math.PI / 180);
     if (state.roofShape === "sloped") {
         return Math.max(0, z * Math.tan(slopeRad));
     } else if (state.roofShape === "triangle") {
@@ -2018,7 +2087,7 @@ function createSkylightsObstacles(L, l) {
 // Build 3D Volumetric Roof Mesh according to Roof Shape
 function create3DRoofShape(L, l, roofMat) {
     const shape = state.roofShape;
-    const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
+    const slopeRad = (state.roofSlope || 0) * (Math.PI / 180);
     const roofGroup = new THREE.Group();
 
     // Dark edge outline for crisp 3D shape visibility
@@ -2373,7 +2442,7 @@ function update3DScene() {
             const roofY = getRoofHeightAt(pos.x, pos.z);
             const anchor = createAnchorMesh(state.colors.anchors, pos.type, pos.compId, rotY || 0, activePostHeight);
 
-            const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
+            const slopeRad = (state.roofSlope || 0) * (Math.PI / 180);
             let rotX = 0;
             if (state.roofShape === "sloped") {
                 rotX = -slopeRad;
@@ -2656,7 +2725,10 @@ function getLocalizedRoofShapeName() {
 
 function formatLineMargin(marginCm) {
     const l = state.lang || 0;
-    if (l === 1) return `(incl. 2×${marginCm}cm free at ends)`;
+    if (l === 1) {
+        const marginIn = (marginCm * 0.3937007874).toFixed(2);
+        return `(incl. 2×${marginIn} in free at ends)`;
+    }
     if (l === 2) return `(incl. 2×${marginCm}cm libres en ext.)`;
     return `(dont 2×${marginCm}cm libres aux ext.)`;
 }
@@ -2668,13 +2740,13 @@ function updateCalculationsUI(layout, maxSpan) {
     const l = state.lang || 0;
     if (!state.product) {
         document.getElementById("val-fall-factor").textContent = state.fallFactor || 1;
-        document.getElementById("val-max-allowed-span").textContent = "-- m";
+        document.getElementById("val-max-allowed-span").textContent = formatDistance(null, 1, l);
         const lenElem = document.getElementById("val-total-line-len");
-        if (lenElem) lenElem.textContent = `${(state.lineLength || 15.0).toFixed(2)} m`;
-        document.getElementById("val-span-l").textContent = "-- m";
+        if (lenElem) lenElem.textContent = formatDistance(state.lineLength || 15.0, 2, l);
+        document.getElementById("val-span-l").textContent = formatDistance(null, 2, l);
         document.getElementById("val-force-l").textContent = "-- kN";
         const deflElem = document.getElementById("val-defl-l");
-        if (deflElem) deflElem.textContent = "-- mm";
+        if (deflElem) deflElem.textContent = formatDeflection(null, l);
         document.getElementById("val-ext1-l").textContent = "-- kN";
         document.getElementById("val-ext2-l").textContent = "-- kN";
         const lblAnchor = document.getElementById("lbl-anchor-count");
@@ -2698,7 +2770,7 @@ function updateCalculationsUI(layout, maxSpan) {
     const isLongRangeInvalid = isLongRange && (state.lineLength < 10.0 || state.lineLength > 56.0 || realSpanMax > 56.0);
 
     if (isLongRangeInvalid) {
-        if (warningTextElem) warningTextElem.textContent = ["Vous devez choisir une longueur de ligne entre 10 et 56 m", "You must choose a line length between 10 and 56 m", "Debe elegir una longitud de línea entre 10 y 56 m"][l];
+        if (warningTextElem) warningTextElem.textContent = ["Vous devez choisir une longueur de ligne entre 10 et 56 m", "You must choose a line length between 393.7 and 2204.72 in", "Debe elegir una longitud de línea entre 10 y 56 m"][l];
         if (warningElem) warningElem.classList.remove("hidden");
 
         const lblAnchor = document.getElementById("lbl-anchor-count");
@@ -2710,15 +2782,15 @@ function updateCalculationsUI(layout, maxSpan) {
         document.getElementById("val-absorber-count").textContent = "--";
 
         document.getElementById("val-fall-factor").textContent = state.fallFactor;
-        document.getElementById("val-max-allowed-span").textContent = `${maxSpan.toFixed(1)}m`;
+        document.getElementById("val-max-allowed-span").textContent = formatDistance(maxSpan, 1, l);
 
         const lenElem = document.getElementById("val-total-line-len");
-        if (lenElem) lenElem.textContent = `${totalLineLen.toFixed(2)} m ${formatLineMargin(30)}`;
+        if (lenElem) lenElem.textContent = `${formatDistance(totalLineLen, 2, l)} ${formatLineMargin(30)}`;
 
-        document.getElementById("val-span-l").textContent = "-- m";
+        document.getElementById("val-span-l").textContent = formatDistance(null, 2, l);
         document.getElementById("val-force-l").textContent = "-- kN";
         const deflElem = document.getElementById("val-defl-l");
-        if (deflElem) deflElem.textContent = "-- mm";
+        if (deflElem) deflElem.textContent = formatDeflection(null, l);
         document.getElementById("val-ext1-l").textContent = "-- kN";
         document.getElementById("val-ext2-l").textContent = "-- kN";
 
@@ -2728,7 +2800,9 @@ function updateCalculationsUI(layout, maxSpan) {
         if (rowExt4) rowExt4.style.display = "none";
 
         const shapeName = getLocalizedRoofShapeName();
-        document.getElementById("header-dims-display").innerHTML = `<i class="fa-solid fa-ruler-combined"></i> ${shapeName} | L1: ${state.lineLength}m ${state.hasLine2 ? `+ L2: ${state.line2Length}m` : ""}`;
+        const strL1 = formatDistance(state.lineLength, 2, l);
+        const strL2 = formatDistance(state.line2Length, 2, l);
+        document.getElementById("header-dims-display").innerHTML = `<i class="fa-solid fa-ruler-combined"></i> ${shapeName} | L1: ${strL1} ${state.hasLine2 ? `+ L2: ${strL2}` : ""}`;
         document.getElementById("header-system-display").textContent = state.product || ["Choisissez un système", "Choose a system", "Elija un sistema"][l];
 
         return;
@@ -2783,19 +2857,19 @@ function updateCalculationsUI(layout, maxSpan) {
     if (valAbsorber) valAbsorber.textContent = displayedAnchorCount;
 
     document.getElementById("val-fall-factor").textContent = state.fallFactor;
-    document.getElementById("val-max-allowed-span").textContent = `${maxSpan.toFixed(1)}m`;
+    document.getElementById("val-max-allowed-span").textContent = formatDistance(maxSpan, 1, l);
 
     const lenElem = document.getElementById("val-total-line-len");
     const marginCm = (state.product === "LONG RANGE") ? 30 : 20;
-    if (lenElem) lenElem.textContent = `${totalLineLen.toFixed(2)} m ${formatLineMargin(marginCm)}`;
+    if (lenElem) lenElem.textContent = `${formatDistance(totalLineLen, 2, l)} ${formatLineMargin(marginCm)}`;
 
-    document.getElementById("val-span-l").textContent = `${realSpanMax.toFixed(2)} m`;
+    document.getElementById("val-span-l").textContent = formatDistance(realSpanMax, 2, l);
     document.getElementById("val-force-l").textContent = `${effortL.toFixed(2)} kN`;
 
-    // Flèche : 2 chiffres après la virgule pour OSHA/ANSI, entier arrondi pour EN 795
+    // Flèche : 2 chiffres après la virgule pour OSHA/ANSI, entier arrondi pour EN 795 (ou inches si EN)
     const deflElem = document.getElementById("val-defl-l");
     if (deflElem) {
-        deflElem.textContent = isOSHA ? `${deflL.toFixed(2)} mm` : `${Math.round(deflL)} mm`;
+        deflElem.textContent = formatDeflection(deflL, l);
     }
 
     document.getElementById("val-ext1-l").textContent = `${ext1L.toFixed(1)} kN`;
@@ -2821,7 +2895,9 @@ function updateCalculationsUI(layout, maxSpan) {
     }
 
     const shapeName = getLocalizedRoofShapeName();
-    document.getElementById("header-dims-display").innerHTML = `<i class="fa-solid fa-ruler-combined"></i> ${shapeName} | L1: ${state.lineLength}m ${state.hasLine2 ? `+ L2: ${state.line2Length}m` : ""}`;
+    const strL1 = formatDistance(state.lineLength, 2, l);
+    const strL2 = formatDistance(state.line2Length, 2, l);
+    document.getElementById("header-dims-display").innerHTML = `<i class="fa-solid fa-ruler-combined"></i> ${shapeName} | L1: ${strL1} ${state.hasLine2 ? `+ L2: ${strL2}` : ""}`;
     const sysDisplayTitle = (state.product === "LONG RANGE") ? `LONG / SUPER / ULTRA RANGE (${activeSubRange})` : (state.product || ["Choisissez un système", "Choose a system", "Elija un sistema"][l]);
     document.getElementById("header-system-display").textContent = sysDisplayTitle;
 
@@ -2918,6 +2994,7 @@ function setupUIEventListeners() {
     const startBtn = document.getElementById("start-config-btn");
     if (startBtn) {
         startBtn.addEventListener("click", () => {
+            populateConfigModalInputs();
             if (configModal) configModal.classList.add("active");
         });
     }
@@ -2925,6 +3002,7 @@ function setupUIEventListeners() {
     const reconfigBtn = document.getElementById("reconfig-btn");
     if (reconfigBtn) {
         reconfigBtn.addEventListener("click", () => {
+            populateConfigModalInputs();
             if (configModal) configModal.classList.add("active");
         });
     }
@@ -3007,9 +3085,19 @@ function setupUIEventListeners() {
         if (selectedShape === "flat_overhead" || selectedShape === "flat" || state.product === "LONG RANGE") {
             state.roofSlope = 0;
         } else {
-            state.roofSlope = parseFloat(document.getElementById("input-roof-slope").value) || 15;
+            const rawSlopeStr = (document.getElementById("input-roof-slope").value || "").toString().replace(',', '.');
+            const rawSlope = parseFloat(rawSlopeStr);
+            state.roofSlope = isNaN(rawSlope) ? 0 : rawSlope;
         }
-        state.lineLength = parseFloat(document.getElementById("input-line-length").value) || 15;
+
+        const rawL1Str = (document.getElementById("input-line-length").value || "").toString().replace(',', '.');
+        const rawL1 = parseFloat(rawL1Str);
+        if (!isNaN(rawL1)) {
+            state.lineLength = (parseInt(state.lang) === 1) ? (rawL1 / METERS_TO_INCHES) : rawL1;
+        } else {
+            state.lineLength = 15.0;
+        }
+
         let requestedUsers = parseInt(document.getElementById("input-users").value) || 1;
         if ((state.product === "LIGHT PRO" || state.product === "LONG RANGE") && requestedUsers > 3) {
             alert(TRANSLATIONS.alerts.usersLimit[state.lang || 0]);
@@ -3025,7 +3113,13 @@ function setupUIEventListeners() {
 
         if (chkLine2) {
             state.hasLine2 = chkLine2.checked;
-            state.line2Length = parseFloat(document.getElementById("input-line2-length").value) || 10;
+            const rawL2Str = (document.getElementById("input-line2-length").value || "").toString().replace(',', '.');
+            const rawL2 = parseFloat(rawL2Str);
+            if (!isNaN(rawL2)) {
+                state.line2Length = (parseInt(state.lang) === 1) ? (rawL2 / METERS_TO_INCHES) : rawL2;
+            } else {
+                state.line2Length = 10.0;
+            }
             state.xMatrixLocation = document.getElementById("select-xmatrix-location").value || "mid";
         }
 
@@ -3619,7 +3713,7 @@ function calculateXConeCount(layout) {
     const spacing = Calculator.getXConeSpacing();
     if (spacing <= 0) return 0;
     let totalCones = 0;
-    const slopeRad = (state.roofSlope || 15) * (Math.PI / 180);
+    const slopeRad = (state.roofSlope || 0) * (Math.PI / 180);
 
     const countConesForLine = (lineNodes) => {
         if (!lineNodes || lineNodes.length < 2) return;
@@ -3735,11 +3829,14 @@ function generatePDFReport() {
     doc.text(`${pdfTrans.roofSlope[l]}${slopeText}`, colRightX, 42);
     if (state.hasLine2) {
         const juncText = state.xMatrixLocation === "mid" ? pdfTrans.midJuncPdf[l] : pdfTrans.endJuncPdf[l];
-        doc.text(`${pdfTrans.linesSummary[l]}L1 = ${state.lineLength} m  |  L2 = ${state.line2Length} m (${juncText})`, colRightX, 48);
+        const strL1 = formatDistance(state.lineLength, 2, l);
+        const strL2 = formatDistance(state.line2Length, 2, l);
+        doc.text(`${pdfTrans.linesSummary[l]}L1 = ${strL1}  |  L2 = ${strL2} (${juncText})`, colRightX, 48);
     } else {
-        doc.text(`${pdfTrans.lineLengthL1[l]}${state.lineLength} m`, colRightX, 48);
+        const strL1 = formatDistance(state.lineLength, 2, l);
+        doc.text(`${pdfTrans.lineLengthL1[l]}${strL1}`, colRightX, 48);
     }
-    doc.text(`${pdfTrans.totalDevLength[l]}${totalLineLen.toFixed(2)} m`, colRightX, 54);
+    doc.text(`${pdfTrans.totalDevLength[l]}${formatDistance(totalLineLen, 2, l)}`, colRightX, 54);
     doc.text(`${pdfTrans.maxUsers[l]}${state.nbUsers}`, colRightX, 60);
 
     // Section 2: Mechanical calculations table for ALL users of system (1..5 for NEW PRO, 1..3 for LIGHT PRO / LONG RANGE)
@@ -3773,9 +3870,9 @@ function generatePDFReport() {
         const uExt1 = Calculator.extremiteForce1(state.product, realSpanMax, u, state.norm, uEffort, uDefl, state.fallFactor, support, isMultiSpan);
         const uExt2 = Calculator.extremiteForce2(state.product, realSpanMax, u, state.norm, uEffort, uDefl, state.fallFactor, support, isMultiSpan);
 
-        rowMaxSpan.push(`${realSpanMax.toFixed(2)} m`);
+        rowMaxSpan.push(formatDistance(realSpanMax, 2, l));
         rowForceL.push(`${uEffort.toFixed(2)} kN`);
-        rowDefl.push(isOSHA ? `${uDefl.toFixed(2)} mm` : `${Math.round(uDefl)} mm`);
+        rowDefl.push(formatDeflection(uDefl, l));
         rowExt1.push(`${uExt1.toFixed(1)} kN`);
         rowExt2.push(`${uExt2.toFixed(1)} kN`);
 
